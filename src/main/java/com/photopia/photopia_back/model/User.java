@@ -22,6 +22,9 @@ public class User {
     @Column(nullable = false, length = 180)
     private String email;
 
+    @Column(nullable = false, length = 255)
+    private String password;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -50,6 +53,13 @@ public class User {
     }
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public Instant getCreatedAt() {

@@ -3,8 +3,8 @@ package com.photopia.photopia_back.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "albums")
-public class Album {
+@Table(name = "groups")
+public class Groups {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,7 +17,7 @@ public class Album {
     @JoinColumn(
             name = "user_id",
             nullable = false,
-            foreignKey = @ForeignKey(name = "fk_albums_user")
+            foreignKey = @ForeignKey(name = "fk_groups_user")
     )
     private User user;
 
