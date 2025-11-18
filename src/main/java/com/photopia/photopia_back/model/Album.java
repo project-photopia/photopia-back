@@ -1,9 +1,13 @@
 package com.photopia.photopia_back.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "albums")
+@Getter @Setter @NoArgsConstructor
 public class Album {
 
     @Id
@@ -20,25 +24,4 @@ public class Album {
             foreignKey = @ForeignKey(name = "fk_albums_user")
     )
     private User user;
-
-    public Long getId() {
-        return id;
-    }
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public User getUser() {
-        return user;
-    }
-    public void setUser(User user) {
-        this.user = user;
-    }
 }
