@@ -1,5 +1,6 @@
 package com.photopia.photopia_back.controller;
 
+import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
@@ -24,13 +25,27 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
+    public ResponseEntity<ApiResponse> createUser(@RequestBody User user) {
         if (repo.findByEmail(user.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().build();
+            ApiResponse errorResponse = ApiResponse.builder()
+                    .success(false)
+                    .message("Email already exist")
+                    .build();
+
+            return ResponseEntity.badRequest().body(errorResponse);
         }
 
         User savedUser = repo.save(user);
-        return ResponseEntity.created(URI.create("/api/users/" + savedUser.getId())).body(savedUser);
+
+        ApiResponse successResponse = ApiResponse.builder()
+                .success(true)
+                .message("User créé avec succès")
+                .data(savedUser)
+                .build();
+
+        return ResponseEntity
+                .created(URI.create("/api/users/" + savedUser.getId()))
+                .body(successResponse);
     }
 
 }
