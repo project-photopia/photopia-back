@@ -23,10 +23,6 @@ public class CapsuleMember {
     @Column(name = "capsule_id")
     private UUID capsuleId;
 
-    @Id
-    @Column(name = "user_id")
-    private UUID userId;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "capsule_id", insertable = false, updatable = false)
     private Capsule capsule;

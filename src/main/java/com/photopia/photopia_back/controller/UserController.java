@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,6 +26,12 @@ public class UserController {
         return repo.findAll();
     }
 
+    /**
+     * Create user response entity.
+     *
+     * @param user the user
+     * @return the response entity
+     */
     @PostMapping
     public ResponseEntity<ApiResponse> createUser(@RequestBody User user) {
         if (repo.findByEmail(user.getEmail()).isPresent()) {
@@ -39,7 +47,7 @@ public class UserController {
 
         ApiResponse successResponse = ApiResponse.builder()
                 .success(true)
-                .message("User créé avec succès")
+                .message("User created successfully")
                 .data(savedUser)
                 .build();
 
@@ -48,4 +56,46 @@ public class UserController {
                 .body(successResponse);
     }
 
+
+    /**
+     * Login user response entity.
+     *
+     * @param body the body
+     * @return the response entity
+     */
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse> loginUser(@RequestBody Map<String, String> body) {
+
+        String email = body.get("email");
+        String password = body.get("password");
+
+        Optional<User> optUser = repo.findByEmail(email);
+        if (optUser.isEmpty()) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.builder()
+                            .success(false)
+                            .message("User not found")
+                            .build()
+            );
+        }
+
+        User user = optUser.get();
+
+        if (!user.getPassword().equals(password)) {
+            return ResponseEntity.badRequest().body(
+                    ApiResponse.builder()
+                            .success(false)
+                            .message("Incorrect password")
+                            .build()
+            );
+        }
+
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .success(true)
+                        .message("Login successful")
+                        .data(user)
+                        .build()
+        );
+    }
 }
