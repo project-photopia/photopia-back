@@ -1,5 +1,6 @@
 package com.photopia.photopia_back.controller;
 
+import com.photopia.photopia_back.jwt.JwtUtil;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.UserRepository;
@@ -21,6 +22,7 @@ public class UserController {
         this.repo = repo;
     }
 
+    // TEST
     @GetMapping
     public List<User> list() {
         return repo.findAll();
@@ -32,7 +34,7 @@ public class UserController {
      * @param user the user
      * @return the response entity
      */
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<ApiResponse> createUser(@RequestBody User user) {
         if (repo.findByEmail(user.getEmail()).isPresent()) {
             ApiResponse errorResponse = ApiResponse.builder()
@@ -64,7 +66,10 @@ public class UserController {
      * @return the response entity
      */
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse> loginUser(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse> loginUser(
+            @RequestBody Map<String, String> body,
+            JwtUtil jwtUtil
+    ) {
 
         String email = body.get("email");
         String password = body.get("password");
@@ -90,11 +95,16 @@ public class UserController {
             );
         }
 
+        String token = jwtUtil.generateToken(user);
+
         return ResponseEntity.ok(
                 ApiResponse.builder()
                         .success(true)
                         .message("Login successful")
-                        .data(user)
+                        .data(Map.of(
+                                "token", token,
+                                "user", user
+                        ))
                         .build()
         );
     }
