@@ -1,13 +1,18 @@
 package com.photopia.photopia_back.controller;
 
 import com.photopia.photopia_back.jwt.JwtUtil;
+import com.photopia.photopia_back.jwt.SecurityConfig;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.UserRepository;
+import org.springframework.boot.autoconfigure.couchbase.CouchbaseProperties;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,9 +22,11 @@ import java.util.Optional;
 public class UserController {
 
     private final UserRepository repo;
+    private final JwtUtil jwtUtil;
 
-    public UserController(UserRepository repo) {
+    public UserController(UserRepository repo, JwtUtil jwtUtil) {
         this.repo = repo;
+        this.jwtUtil = jwtUtil;
     }
 
     // TEST
@@ -67,8 +74,7 @@ public class UserController {
      */
     @PostMapping("/login")
     public ResponseEntity<ApiResponse> loginUser(
-            @RequestBody Map<String, String> body,
-            JwtUtil jwtUtil
+            @RequestBody Map<String, String> body
     ) {
 
         String email = body.get("email");
@@ -87,6 +93,7 @@ public class UserController {
         User user = optUser.get();
 
         if (!user.getPassword().equals(password)) {
+            // TODO: changer par un hascode
             return ResponseEntity.badRequest().body(
                     ApiResponse.builder()
                             .success(false)
@@ -96,15 +103,29 @@ public class UserController {
         }
 
         String token = jwtUtil.generateToken(user);
+        Map<String, Object> data = new HashMap<>();
+        data.put("user", user);
+        data.put("token", token);
 
         return ResponseEntity.ok(
                 ApiResponse.builder()
                         .success(true)
                         .message("Login successful")
-                        .data(Map.of(
-                                "token", token,
-                                "user", user
-                        ))
+                        .data(data)
+                        .build()
+        );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse> getMe() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = (User) authentication.getPrincipal();
+
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .success(true)
+                        .message("Current user")
+                        .data(currentUser)
                         .build()
         );
     }
