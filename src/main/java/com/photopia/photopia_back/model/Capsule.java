@@ -47,8 +47,8 @@ public class Capsule {
     private String joinToken;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
-    private User owner;
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Column(name = "is_archived")
     @Builder.Default

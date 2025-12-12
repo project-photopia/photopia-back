@@ -27,8 +27,8 @@ public class Media {
     private Capsule capsule;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id")
-    private User author;
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "media_type", length = 10)
@@ -48,6 +48,12 @@ public class Media {
 
     @Column(name = "duration_sec")
     private Integer durationSec;
+
+    private Double latitude;
+    private Double longitude;
+
+    @Column(name = "location_name")
+    private String locationName;
 
     @Column(name = "taken_at")
     private Instant takenAt;

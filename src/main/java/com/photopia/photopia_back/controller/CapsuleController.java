@@ -31,8 +31,7 @@ public class CapsuleController {
 
     @PostMapping("/create")
     public ResponseEntity<ApiResponse> create(
-            @RequestBody Capsule capsule
-    ) {
+            @RequestBody Capsule capsule) {
 
         // Start Date
         capsule.setStartDate(LocalDate.now());
@@ -48,19 +47,16 @@ public class CapsuleController {
                 .getAuthentication()
                 .getPrincipal();
 
-        capsule.setOwner(currentUser);
+        capsule.setUser(currentUser);
 
-        if (
-                capsule.getStartDate() != null &&
+        if (capsule.getStartDate() != null &&
                 capsule.getEndDate() != null &&
-                capsule.getEndDate().isBefore(capsule.getStartDate())
-        ) {
+                capsule.getEndDate().isBefore(capsule.getStartDate())) {
             return ResponseEntity.badRequest().body(
                     ApiResponse.builder()
                             .success(false)
                             .message("endDate cannot be before startDate")
-                            .build()
-            );
+                            .build());
         }
 
         // Défault Values
@@ -81,7 +77,6 @@ public class CapsuleController {
                         .success(true)
                         .message("Album created")
                         .data(savedCapsule)
-                        .build()
-        );
+                        .build());
     }
 }

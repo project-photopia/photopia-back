@@ -27,8 +27,8 @@ public class Comment {
     private Media media;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id")
-    private User author;
+    @JoinColumn(name = "user_id")
+    private User user;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
