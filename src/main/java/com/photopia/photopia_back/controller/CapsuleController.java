@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/capsules")
@@ -31,44 +32,36 @@ public class CapsuleController {
 
     @PostMapping("/create")
     public ResponseEntity<ApiResponse> create(
-            @RequestBody Capsule capsule) {
+            @RequestBody com.photopia.photopia_back.dto.CapsuleCreateRequest request) {
+
+        Capsule capsule = new Capsule();
+        capsule.setName(request.name());
 
         // Start Date
         capsule.setStartDate(LocalDate.now());
-
         // End Date
         capsule.setEndDate(null);
+        // Join Token (Generated)
+        capsule.setJoinToken(UUID.randomUUID().toString());
 
-        // Join Token
-        capsule.setJoinToken(String.valueOf(Keys.secretKeyFor(SignatureAlgorithm.HS256)));
-
-        // Owner
-        User currentUser = (User) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        capsule.setUser(currentUser);
-
-        if (capsule.getStartDate() != null &&
-                capsule.getEndDate() != null &&
-                capsule.getEndDate().isBefore(capsule.getStartDate())) {
-            return ResponseEntity.badRequest().body(
-                    ApiResponse.builder()
-                            .success(false)
-                            .message("endDate cannot be before startDate")
-                            .build());
+        // User Handling
+        User owner;
+        if (request.userId() != null) {
+            // If userId provided, fetch from DB
+            owner = userRepository.findById(request.userId())
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + request.userId()));
+        } else {
+            // Fallback to authenticated user
+            owner = (User) SecurityContextHolder.getContext()
+                    .getAuthentication()
+                    .getPrincipal();
         }
+        capsule.setUser(owner);
 
-        // Défault Values
-        if (capsule.getIsPrivate() == null) {
-            capsule.setIsPrivate(true);
-        }
-        if (capsule.getIsArchived() == null) {
-            capsule.setIsArchived(true);
-        }
-        if (capsule.getMemberCount() == null) {
-            capsule.setMemberCount(1);
-        }
+        // Default Values
+        capsule.setIsPrivate(request.isPrivate() != null ? request.isPrivate() : true);
+        capsule.setIsArchived(false); // Default logic
+        capsule.setMemberCount(1);
 
         Capsule savedCapsule = capsuleRepository.save(capsule);
 
