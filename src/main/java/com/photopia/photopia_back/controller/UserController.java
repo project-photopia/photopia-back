@@ -1,7 +1,10 @@
 package com.photopia.photopia_back.controller;
 
 import com.photopia.photopia_back.jwt.JwtUtil;
+import com.photopia.photopia_back.model.ApiError;
+import com.photopia.photopia_back.model.ApiErrorResponse;
 import com.photopia.photopia_back.model.ApiResponse;
+import com.photopia.photopia_back.model.ApiSuccessResponse;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
@@ -43,12 +46,12 @@ public class UserController {
         public ResponseEntity<ApiResponse> createUser(
                         @RequestBody com.photopia.photopia_back.dto.RegisterRequest request) {
                 if (repo.findByEmail(request.email()).isPresent()) {
-                        ApiResponse errorResponse = ApiResponse.builder()
-                                        .success(false)
-                                        .message("Email already exist")
-                                        .build();
-
-                        return ResponseEntity.badRequest().body(errorResponse);
+                        return ResponseEntity.badRequest().body(
+                                        ApiErrorResponse.of(ApiError.builder()
+                                                        .status(400)
+                                                        .message("Email already exist")
+                                                        .code("EMAIL_ALREADY_EXISTS")
+                                                        .build()));
                 }
 
                 User user = new User();
@@ -58,15 +61,14 @@ public class UserController {
 
                 User savedUser = repo.save(user);
 
-                ApiResponse successResponse = ApiResponse.builder()
-                                .success(true)
-                                .message("User created successfully")
-                                .data(savedUser)
-                                .build();
+                String token = jwtUtil.generateToken(savedUser);
+                Map<String, Object> data = new HashMap<>();
+                data.put("user", savedUser);
+                data.put("token", token);
 
                 return ResponseEntity
                                 .created(URI.create("/api/users/" + savedUser.getId()))
-                                .body(successResponse);
+                                .body(ApiSuccessResponse.of(data, "User created successfully"));
         }
 
         /**
@@ -85,20 +87,22 @@ public class UserController {
                 Optional<User> optUser = repo.findByEmail(email);
                 if (optUser.isEmpty()) {
                         return ResponseEntity.badRequest().body(
-                                        ApiResponse.builder()
-                                                        .success(false)
+                                        ApiErrorResponse.of(ApiError.builder()
+                                                        .status(400)
                                                         .message("User not found")
-                                                        .build());
+                                                        .code("USER_NOT_FOUND")
+                                                        .build()));
                 }
 
                 User user = optUser.get();
 
                 if (user.getPassword() == null || !user.getPassword().equals(password)) {
                         return ResponseEntity.badRequest().body(
-                                        ApiResponse.builder()
-                                                        .success(false)
+                                        ApiErrorResponse.of(ApiError.builder()
+                                                        .status(400)
                                                         .message("Incorrect password")
-                                                        .build());
+                                                        .code("INCORRECT_PASSWORD")
+                                                        .build()));
                 }
 
                 String token = jwtUtil.generateToken(user);
@@ -106,12 +110,7 @@ public class UserController {
                 data.put("user", user);
                 data.put("token", token);
 
-                return ResponseEntity.ok(
-                                ApiResponse.builder()
-                                                .success(true)
-                                                .message("Login successful")
-                                                .data(data)
-                                                .build());
+                return ResponseEntity.ok(ApiSuccessResponse.of(data, "Login successful"));
         }
 
         @GetMapping("/me")
@@ -119,11 +118,6 @@ public class UserController {
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
                 User currentUser = (User) authentication.getPrincipal();
 
-                return ResponseEntity.ok(
-                                ApiResponse.builder()
-                                                .success(true)
-                                                .message("Current user")
-                                                .data(currentUser)
-                                                .build());
+                return ResponseEntity.ok(ApiSuccessResponse.of(currentUser, "Current user"));
         }
 }
