@@ -1,19 +1,15 @@
 package com.photopia.photopia_back.controller;
 
+import com.photopia.photopia_back.dto.CapsuleCreateRequest;
+import com.photopia.photopia_back.dto.CapsuleGetMyCapsulesResponse;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.Capsule;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleRepository;
 import com.photopia.photopia_back.repository.UserRepository;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -32,7 +28,11 @@ public class CapsuleController {
 
     @PostMapping("/create")
     public ResponseEntity<ApiResponse> create(
-            @RequestBody com.photopia.photopia_back.dto.CapsuleCreateRequest request) {
+            @RequestBody CapsuleCreateRequest request,
+            Authentication authentication
+            ) {
+
+        User owner = (User) authentication.getPrincipal();
 
         Capsule capsule = new Capsule();
         capsule.setName(request.name());
@@ -44,18 +44,6 @@ public class CapsuleController {
         // Join Token (Generated)
         capsule.setJoinToken(UUID.randomUUID().toString());
 
-        // User Handling
-        User owner;
-        if (request.userId() != null) {
-            // If userId provided, fetch from DB
-            owner = userRepository.findById(request.userId())
-                    .orElseThrow(() -> new RuntimeException("User not found with id: " + request.userId()));
-        } else {
-            // Fallback to authenticated user
-            owner = (User) SecurityContextHolder.getContext()
-                    .getAuthentication()
-                    .getPrincipal();
-        }
         capsule.setUser(owner);
 
         // Default Values
@@ -72,4 +60,33 @@ public class CapsuleController {
                         .data(savedCapsule)
                         .build());
     }
+
+    @GetMapping("/get")
+    public ResponseEntity<ApiResponse> getMyCapsules(Authentication authentication) {
+
+        User owner = (User) authentication.getPrincipal();
+        var capsules = capsuleRepository.findByUser(owner);
+
+        var data = capsules.stream()
+                .map(c -> new CapsuleGetMyCapsulesResponse(
+                        c.getId(),
+                        c.getName(),
+                        c.getStartDate(),
+                        c.getEndDate(),
+                        c.getJoinToken(),
+                        c.getIsPrivate(),
+                        c.getIsArchived(),
+                        c.getMemberCount()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(
+                ApiResponse.builder()
+                        .success(true)
+                        .message("Capsules fetched")
+                        .data(data)
+                        .build()
+        );
+    }
+
 }
