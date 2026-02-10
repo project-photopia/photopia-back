@@ -3,6 +3,7 @@ package com.photopia.photopia_back.controller;
 import com.photopia.photopia_back.dto.CapsuleCreateRequest;
 import com.photopia.photopia_back.dto.CapsuleGetMyCapsulesResponse;
 import com.photopia.photopia_back.model.ApiResponse;
+import com.photopia.photopia_back.model.ApiSuccessResponse;
 import com.photopia.photopia_back.model.Capsule;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleRepository;
@@ -53,12 +54,7 @@ public class CapsuleController {
 
         Capsule savedCapsule = capsuleRepository.save(capsule);
 
-        return ResponseEntity.ok(
-                ApiResponse.builder()
-                        .success(true)
-                        .message("Album created")
-                        .data(savedCapsule)
-                        .build());
+        return ResponseEntity.ok(ApiSuccessResponse.of(savedCapsule, "Album created"));
     }
 
     @GetMapping("/get")

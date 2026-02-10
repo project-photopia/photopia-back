@@ -16,9 +16,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 public class MediaController {
 
     private final MediaService mediaService;
+    private final com.photopia.photopia_back.service.CommentService commentService;
+    private final com.photopia.photopia_back.service.ReactionService reactionService;
 
-    public MediaController(MediaService mediaService) {
+    public MediaController(MediaService mediaService,
+            com.photopia.photopia_back.service.CommentService commentService,
+            com.photopia.photopia_back.service.ReactionService reactionService) {
         this.mediaService = mediaService;
+        this.commentService = commentService;
+        this.reactionService = reactionService;
     }
 
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
@@ -52,6 +58,53 @@ public class MediaController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<com.photopia.photopia_back.dto.MediaResponse> getMedia(@PathVariable UUID id) {
+        Media media = mediaService.getMediaById(id);
+        return ResponseEntity.ok(mapToResponse(media));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMedia(@PathVariable UUID id) {
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        mediaService.deleteMedia(id, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- Comments ---
+
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<com.photopia.photopia_back.dto.CommentResponse> addComment(
+            @PathVariable UUID id,
+            @RequestBody com.photopia.photopia_back.dto.CommentRequest request) {
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return ResponseEntity.ok(commentService.addComment(id, currentUser, request.content()));
+    }
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<java.util.List<com.photopia.photopia_back.dto.CommentResponse>> getComments(
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(commentService.getCommentsByMedia(id));
+    }
+
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<Void> deleteComment(@PathVariable UUID commentId) {
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        commentService.deleteComment(commentId, currentUser);
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- Reactions ---
+
+    @PostMapping("/{id}/react")
+    public ResponseEntity<Void> reactToMedia(
+            @PathVariable UUID id,
+            @RequestBody com.photopia.photopia_back.dto.ReactionRequest request) {
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        reactionService.toggleReaction(id, currentUser, request.emoji());
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/capsule/{capsuleId}")
     public ResponseEntity<java.util.List<com.photopia.photopia_back.dto.MediaResponse>> getCapsuleMedias(
             @PathVariable UUID capsuleId) {
@@ -59,26 +112,30 @@ public class MediaController {
         java.util.List<Media> medias = mediaService.getMediasByCapsuleId(capsuleId);
 
         java.util.List<com.photopia.photopia_back.dto.MediaResponse> responses = medias.stream()
-                .map(media -> new com.photopia.photopia_back.dto.MediaResponse(
-                        media.getId(),
-                        media.getOriginalUrl(),
-                        media.getPreviewUrl(),
-                        media.getThumbnailUrl(),
-                        media.getMediaType() != null ? media.getMediaType().name() : null,
-                        media.getWidth(),
-                        media.getHeight(),
-                        media.getDurationSec(),
-                        media.getLatitude(),
-                        media.getLongitude(),
-                        media.getLocationName(),
-                        media.getTakenAt(),
-                        media.getUploadedAt(),
-                        media.getReactionCount(),
-                        media.getCommentCount(),
-                        media.getCapsule() != null ? media.getCapsule().getId() : null,
-                        media.getUser() != null ? media.getUser().getId() : null))
+                .map(this::mapToResponse)
                 .toList();
 
         return ResponseEntity.ok(responses);
+    }
+
+    private com.photopia.photopia_back.dto.MediaResponse mapToResponse(Media media) {
+        return new com.photopia.photopia_back.dto.MediaResponse(
+                media.getId(),
+                media.getOriginalUrl(),
+                media.getPreviewUrl(),
+                media.getThumbnailUrl(),
+                media.getMediaType() != null ? media.getMediaType().name() : null,
+                media.getWidth(),
+                media.getHeight(),
+                media.getDurationSec(),
+                media.getLatitude(),
+                media.getLongitude(),
+                media.getLocationName(),
+                media.getTakenAt(),
+                media.getUploadedAt(),
+                media.getReactionCount(),
+                media.getCommentCount(),
+                media.getCapsule() != null ? media.getCapsule().getId() : null,
+                media.getUser() != null ? media.getUser().getId() : null);
     }
 }
