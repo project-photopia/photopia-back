@@ -1,0 +1,8 @@
+package com.photopia.photopia_back.dto;
+
+public record PresignedUrlResponse(
+        String uploadUrl,
+        String key,
+        String previewUploadUrl,
+        String previewKey) {
+}

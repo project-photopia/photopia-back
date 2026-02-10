@@ -13,26 +13,37 @@ import java.net.URI;
 @Configuration
 public class R2Config {
 
-    @Value("${r2.account-id}")
-    private String accountId;
+        @Value("${r2.account-id}")
+        private String accountId;
 
-    @Value("${r2.access-key}")
-    private String accessKey;
+        @Value("${r2.access-key}")
+        private String accessKey;
 
-    @Value("${r2.secret-key}")
-    private String secretKey;
+        @Value("${r2.secret-key}")
+        private String secretKey;
 
-    @Bean
-    public S3Client s3Client() {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+        @Bean
+        public S3Client s3Client() {
+                AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
 
-        return S3Client.builder()
-                .endpointOverride(URI.create("https://" + accountId + ".r2.cloudflarestorage.com"))
-                .region(Region.US_EAST_1) // R2 doesn't use regions but SDK requires one
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .serviceConfiguration(S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-                .build();
-    }
+                return S3Client.builder()
+                                .endpointOverride(URI.create("https://" + accountId + ".r2.cloudflarestorage.com"))
+                                .region(Region.US_EAST_1) // R2 doesn't use regions but SDK requires one
+                                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                                .serviceConfiguration(S3Configuration.builder()
+                                                .pathStyleAccessEnabled(true)
+                                                .build())
+                                .build();
+        }
+
+        @Bean
+        public software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner() {
+                AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+
+                return software.amazon.awssdk.services.s3.presigner.S3Presigner.builder()
+                                .endpointOverride(URI.create("https://" + accountId + ".r2.cloudflarestorage.com"))
+                                .region(Region.US_EAST_1)
+                                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                                .build();
+        }
 }

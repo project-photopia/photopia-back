@@ -4,62 +4,53 @@ import com.photopia.photopia_back.model.Media;
 import com.photopia.photopia_back.service.MediaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.UUID;
 import com.photopia.photopia_back.model.User;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import com.photopia.photopia_back.dto.PresignedUrlResponse;
+import com.photopia.photopia_back.dto.MediaResponse;
+import com.photopia.photopia_back.dto.MediaRegisterRequest;
+import com.photopia.photopia_back.dto.CommentResponse;
+import com.photopia.photopia_back.dto.CommentRequest;
+import com.photopia.photopia_back.dto.ReactionRequest;
+import com.photopia.photopia_back.service.CommentService;
+import com.photopia.photopia_back.service.ReactionService;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/media")
 public class MediaController {
 
     private final MediaService mediaService;
-    private final com.photopia.photopia_back.service.CommentService commentService;
-    private final com.photopia.photopia_back.service.ReactionService reactionService;
+    private final CommentService commentService;
+    private final ReactionService reactionService;
 
     public MediaController(MediaService mediaService,
-            com.photopia.photopia_back.service.CommentService commentService,
-            com.photopia.photopia_back.service.ReactionService reactionService) {
+            CommentService commentService,
+            ReactionService reactionService) {
         this.mediaService = mediaService;
         this.commentService = commentService;
         this.reactionService = reactionService;
     }
 
-    @PostMapping(value = "/upload", consumes = "multipart/form-data")
-    public ResponseEntity<com.photopia.photopia_back.dto.MediaResponse> uploadMedia(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("capsuleId") UUID capsuleId) throws IOException {
+    @GetMapping("/upload-url")
+    public ResponseEntity<PresignedUrlResponse> getUploadUrl(
+            @RequestParam("contentType") String contentType) {
+        return ResponseEntity.ok(mediaService.getPresignedUrl(contentType));
+    }
 
+    @PostMapping("/register")
+    public ResponseEntity<MediaResponse> registerMedia(
+            @RequestBody MediaRegisterRequest request) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        Media media = mediaService.uploadMedia(file, currentUser, capsuleId);
-
-        com.photopia.photopia_back.dto.MediaResponse response = new com.photopia.photopia_back.dto.MediaResponse(
-                media.getId(),
-                media.getOriginalUrl(),
-                media.getPreviewUrl(),
-                media.getThumbnailUrl(),
-                media.getMediaType() != null ? media.getMediaType().name() : null,
-                media.getWidth(),
-                media.getHeight(),
-                media.getDurationSec(),
-                media.getLatitude(),
-                media.getLongitude(),
-                media.getLocationName(),
-                media.getTakenAt(),
-                media.getUploadedAt(),
-                media.getReactionCount(),
-                media.getCommentCount(),
-                media.getCapsule() != null ? media.getCapsule().getId() : null,
-                media.getUser() != null ? media.getUser().getId() : null);
-
-        return ResponseEntity.ok(response);
+        Media media = mediaService.registerMedia(request, currentUser);
+        return ResponseEntity.ok(mapToResponse(media));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<com.photopia.photopia_back.dto.MediaResponse> getMedia(@PathVariable UUID id) {
+    public ResponseEntity<MediaResponse> getMedia(@PathVariable UUID id) {
         Media media = mediaService.getMediaById(id);
         return ResponseEntity.ok(mapToResponse(media));
     }
@@ -74,15 +65,15 @@ public class MediaController {
     // --- Comments ---
 
     @PostMapping("/{id}/comments")
-    public ResponseEntity<com.photopia.photopia_back.dto.CommentResponse> addComment(
+    public ResponseEntity<CommentResponse> addComment(
             @PathVariable UUID id,
-            @RequestBody com.photopia.photopia_back.dto.CommentRequest request) {
+            @RequestBody CommentRequest request) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return ResponseEntity.ok(commentService.addComment(id, currentUser, request.content()));
     }
 
     @GetMapping("/{id}/comments")
-    public ResponseEntity<java.util.List<com.photopia.photopia_back.dto.CommentResponse>> getComments(
+    public ResponseEntity<List<CommentResponse>> getComments(
             @PathVariable UUID id) {
         return ResponseEntity.ok(commentService.getCommentsByMedia(id));
     }
@@ -99,31 +90,36 @@ public class MediaController {
     @PostMapping("/{id}/react")
     public ResponseEntity<Void> reactToMedia(
             @PathVariable UUID id,
-            @RequestBody com.photopia.photopia_back.dto.ReactionRequest request) {
+            @RequestBody ReactionRequest request) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         reactionService.toggleReaction(id, currentUser, request.emoji());
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/capsule/{capsuleId}")
-    public ResponseEntity<java.util.List<com.photopia.photopia_back.dto.MediaResponse>> getCapsuleMedias(
+    public ResponseEntity<List<MediaResponse>> getCapsuleMedias(
             @PathVariable UUID capsuleId) {
 
-        java.util.List<Media> medias = mediaService.getMediasByCapsuleId(capsuleId);
+        List<Media> medias = mediaService.getMediasByCapsuleId(capsuleId);
 
-        java.util.List<com.photopia.photopia_back.dto.MediaResponse> responses = medias.stream()
+        List<MediaResponse> responses = medias.stream()
                 .map(this::mapToResponse)
                 .toList();
 
         return ResponseEntity.ok(responses);
     }
 
-    private com.photopia.photopia_back.dto.MediaResponse mapToResponse(Media media) {
-        return new com.photopia.photopia_back.dto.MediaResponse(
+    private MediaResponse mapToResponse(Media media) {
+        // Transform stored keys into Presigned GET URLs
+        String originalUrl = mediaService.getPresignedGetUrl(media.getOriginalUrl());
+        String previewUrl = mediaService.getPresignedGetUrl(media.getPreviewUrl());
+        String thumbnailUrl = mediaService.getPresignedGetUrl(media.getThumbnailUrl());
+
+        return new MediaResponse(
                 media.getId(),
-                media.getOriginalUrl(),
-                media.getPreviewUrl(),
-                media.getThumbnailUrl(),
+                originalUrl,
+                previewUrl,
+                thumbnailUrl,
                 media.getMediaType() != null ? media.getMediaType().name() : null,
                 media.getWidth(),
                 media.getHeight(),
