@@ -2,36 +2,91 @@ package com.photopia.photopia_back.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import java.io.IOException;
 import java.util.UUID;
 
 @Service
 public class R2Service {
 
-    private final S3Client s3Client;
+    private final software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner;
 
     @Value("${r2.bucket-name}")
     private String bucketName;
 
-    public R2Service(S3Client s3Client) {
-        this.s3Client = s3Client;
+    public R2Service(software.amazon.awssdk.services.s3.presigner.S3Presigner s3Presigner) {
+        this.s3Presigner = s3Presigner;
     }
 
-    public String uploadFile(MultipartFile file) throws IOException {
-        String filename = UUID.randomUUID().toString() + "-" + file.getOriginalFilename();
+    public com.photopia.photopia_back.dto.PresignedUrlResponse generatePresignedUrl(String contentType) {
+        String key = UUID.randomUUID().toString();
 
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+        // 1. Determine extensions
+        String extension = "";
+        String previewExtension = ".jpg"; // Previews are usually JPEGs
+        if (contentType.equals("image/jpeg"))
+            extension = ".jpg";
+        else if (contentType.equals("image/png"))
+            extension = ".png";
+        else if (contentType.equals("video/mp4"))
+            extension = ".mp4";
+
+        String originalKey = key + extension;
+        String previewKey = key + "-preview" + previewExtension;
+
+        // 2. Generate Presigned URL for Original File
+        String originalUrl = generateSinglePresignedUrl(originalKey, contentType);
+
+        // 3. Generate Presigned URL for Preview File (Assuming JPEG for simplicity)
+        String previewUrl = generateSinglePresignedUrl(previewKey, "image/jpeg");
+
+        return new com.photopia.photopia_back.dto.PresignedUrlResponse(originalUrl, originalKey, previewUrl,
+                previewKey);
+    }
+
+    private String generateSinglePresignedUrl(String key, String contentType) {
+        software.amazon.awssdk.services.s3.model.PutObjectRequest objectRequest = software.amazon.awssdk.services.s3.model.PutObjectRequest
+                .builder()
                 .bucket(bucketName)
-                .key(filename)
-                .contentType(file.getContentType())
+                .key(key)
+                .contentType(contentType)
                 .build();
 
-        s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+        software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest presignRequest = software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest
+                .builder()
+                .signatureDuration(java.time.Duration.ofMinutes(10))
+                .putObjectRequest(objectRequest)
+                .build();
 
-        return filename;
+        software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest presignedRequest = s3Presigner
+                .presignPutObject(presignRequest);
+
+        return presignedRequest.url().toString();
+    }
+
+    public String generatePresignedGetUrl(String key) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+
+        // If it's already a full URL (legacy), return it as is
+        if (key.startsWith("http")) {
+            return key;
+        }
+
+        software.amazon.awssdk.services.s3.model.GetObjectRequest objectRequest = software.amazon.awssdk.services.s3.model.GetObjectRequest
+                .builder()
+                .bucket(bucketName)
+                .key(key)
+                .build();
+
+        software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest presignRequest = software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+                .builder()
+                .signatureDuration(java.time.Duration.ofHours(1)) // Valid for 1 hour
+                .getObjectRequest(objectRequest)
+                .build();
+
+        software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest presignedRequest = s3Presigner
+                .presignGetObject(presignRequest);
+
+        return presignedRequest.url().toString();
     }
 }

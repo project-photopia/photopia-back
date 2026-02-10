@@ -6,9 +6,6 @@ import com.photopia.photopia_back.repository.MediaRepository;
 import jakarta.transaction.Transactional;
 
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
 
 import com.photopia.photopia_back.repository.CapsuleRepository;
 import java.util.UUID;
@@ -20,44 +17,43 @@ public class MediaService {
     private final R2Service r2Service;
     private final MediaRepository mediaRepository;
     private final CapsuleRepository capsuleRepository;
-    private final ImageMetadataService imageMetadataService;
 
     public MediaService(R2Service r2Service, MediaRepository mediaRepository,
-            CapsuleRepository capsuleRepository, ImageMetadataService imageMetadataService) {
+            CapsuleRepository capsuleRepository) {
         this.r2Service = r2Service;
         this.mediaRepository = mediaRepository;
         this.capsuleRepository = capsuleRepository;
-        this.imageMetadataService = imageMetadataService;
     }
 
     @Transactional
-    public Media uploadMedia(MultipartFile file, User user, UUID capsuleId) throws IOException {
+    public Media registerMedia(com.photopia.photopia_back.dto.MediaRegisterRequest request, User user) {
         // Fetch Capsule
-        com.photopia.photopia_back.model.Capsule capsule = capsuleRepository.findById(capsuleId)
+        com.photopia.photopia_back.model.Capsule capsule = capsuleRepository.findById(request.capsuleId())
                 .orElseThrow(() -> new RuntimeException("Capsule not found"));
 
-        // Upload to R2
-        String fileName = r2Service.uploadFile(file);
-
-        // Construct Public URL or Key
-        String fileUrl = fileName;
-
-        // Extract Metadata
-        ImageMetadataService.ImageMetadata metadata = imageMetadataService.extractMetadata(file);
-
         Media media = Media.builder()
-                .originalUrl(fileUrl)
-                .mediaType(determineMediaType(file.getContentType()))
+                .originalUrl(request.originalKey())
+                .previewUrl(request.previewKey())
+                .thumbnailUrl(request.previewKey()) // Backward compatibility
+                .mediaType(determineMediaType(request.mediaType()))
                 .user(user)
                 .capsule(capsule)
-                .width(metadata.width())
-                .height(metadata.height())
-                .takenAt(metadata.takenAt() != null ? metadata.takenAt().toInstant() : null)
-                .latitude(metadata.latitude())
-                .longitude(metadata.longitude())
+                .width(request.width())
+                .height(request.height())
+                .takenAt(request.takenAt())
+                .latitude(request.latitude())
+                .longitude(request.longitude())
                 .build();
 
         return mediaRepository.save(media);
+    }
+
+    public com.photopia.photopia_back.dto.PresignedUrlResponse getPresignedUrl(String contentType) {
+        return r2Service.generatePresignedUrl(contentType);
+    }
+
+    public String getPresignedGetUrl(String key) {
+        return r2Service.generatePresignedGetUrl(key);
     }
 
     private Media.MediaType determineMediaType(String contentType) {
@@ -84,9 +80,6 @@ public class MediaService {
         if (!media.getUser().getId().equals(user.getId())) {
             throw new RuntimeException("You are not authorized to delete this media");
         }
-
-        // In a real world scenario, we might want to delete the file from R2 as well
-        // r2Service.deleteFile(media.getOriginalUrl());
 
         mediaRepository.delete(media);
     }
