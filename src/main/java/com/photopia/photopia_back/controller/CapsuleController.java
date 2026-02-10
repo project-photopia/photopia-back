@@ -73,7 +73,7 @@ public class CapsuleController {
         return ResponseEntity.ok(ApiSuccessResponse.of(savedCapsule, "Album created"));
     }
 
-    @GetMapping("/get")
+    @GetMapping("")
     public ResponseEntity<ApiResponse> getMyCapsules(Authentication authentication) {
 
         User owner = (User) authentication.getPrincipal();
@@ -92,13 +92,11 @@ public class CapsuleController {
                 ))
                 .toList();
 
-        return ResponseEntity.ok(
-                ApiResponse.builder()
-                        .success(true)
-                        .message("Capsules fetched")
-                        .data(data)
-                        .build()
-        );
+        if (data.isEmpty()) {
+            return ResponseEntity.ok(ApiSuccessResponse.of(data, "No capsules found"));
+        }
+
+        return ResponseEntity.ok(ApiSuccessResponse.of(data, "Capsules fetched"));
     }
 
     @GetMapping("/{capsuleId}/invite-link")
