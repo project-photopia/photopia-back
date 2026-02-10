@@ -1,13 +1,16 @@
 package com.photopia.photopia_back.service;
 
+import com.photopia.photopia_back.dto.MediaRegisterRequest;
+import com.photopia.photopia_back.dto.PresignedUrlResponse;
+import com.photopia.photopia_back.model.Capsule;
 import com.photopia.photopia_back.model.Media;
 import com.photopia.photopia_back.model.User;
+import com.photopia.photopia_back.repository.CapsuleRepository;
 import com.photopia.photopia_back.repository.MediaRepository;
 import jakarta.transaction.Transactional;
 
 import org.springframework.stereotype.Service;
 
-import com.photopia.photopia_back.repository.CapsuleRepository;
 import java.util.UUID;
 import java.util.List;
 
@@ -26,9 +29,17 @@ public class MediaService {
     }
 
     @Transactional
-    public Media registerMedia(com.photopia.photopia_back.dto.MediaRegisterRequest request, User user) {
+    public Media registerMedia(MediaRegisterRequest request, User user) {
+        // Verify Signatures
+        if (!r2Service.verifySignature(request.originalKey(), user.getId().toString(), request.signature())) {
+            throw new RuntimeException("Invalid signature for original key");
+        }
+        if (!r2Service.verifySignature(request.previewKey(), user.getId().toString(), request.previewSignature())) {
+            throw new RuntimeException("Invalid signature for preview key");
+        }
+
         // Fetch Capsule
-        com.photopia.photopia_back.model.Capsule capsule = capsuleRepository.findById(request.capsuleId())
+        Capsule capsule = capsuleRepository.findById(request.capsuleId())
                 .orElseThrow(() -> new RuntimeException("Capsule not found"));
 
         Media media = Media.builder()
@@ -48,8 +59,8 @@ public class MediaService {
         return mediaRepository.save(media);
     }
 
-    public com.photopia.photopia_back.dto.PresignedUrlResponse getPresignedUrl(String contentType) {
-        return r2Service.generatePresignedUrl(contentType);
+    public PresignedUrlResponse getPresignedUrl(String contentType, UUID userId) {
+        return r2Service.generatePresignedUrl(contentType, userId);
     }
 
     public String getPresignedGetUrl(String key) {
