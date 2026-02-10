@@ -38,7 +38,8 @@ public class MediaController {
     @GetMapping("/upload-url")
     public ResponseEntity<PresignedUrlResponse> getUploadUrl(
             @RequestParam("contentType") String contentType) {
-        return ResponseEntity.ok(mediaService.getPresignedUrl(contentType));
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return ResponseEntity.ok(mediaService.getPresignedUrl(contentType, currentUser.getId()));
     }
 
     @PostMapping("/register")
