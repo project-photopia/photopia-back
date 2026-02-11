@@ -109,26 +109,13 @@ public class CapsuleController {
         Capsule capsule = capsuleRepository.findByIdAndUser_Id(capsuleId, user.getId())
                 .orElseThrow(() -> new RuntimeException("Capsule not found"));
 
-        if (!capsule.getUser().getId().equals(user.getId())) {
-            return ResponseEntity.status(403).body(
-                    ApiResponse.builder().success(false).message("Forbidden").build()
-            );
-        }
-
         if (capsule.getJoinToken() == null || capsule.getJoinToken().isBlank()) {
             capsule.setJoinToken(UUID.randomUUID().toString());
             capsuleRepository.save(capsule);
         }
 
         String link = "https://photopia.app/join?token=" + capsule.getJoinToken();
-
-        return ResponseEntity.ok(
-                ApiResponse.builder()
-                        .success(true)
-                        .message("Invite link generated")
-                        .data(link)
-                        .build()
-        );
+        return ResponseEntity.ok(ApiSuccessResponse.of(link, "Invite link generated"));
     }
 
     @PostMapping("/join/{token}")
@@ -145,12 +132,7 @@ public class CapsuleController {
         UUID userId = user.getId();
 
         if (capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, userId)) {
-            return ResponseEntity.ok(
-                    ApiResponse.builder()
-                            .success(true)
-                            .message("Already a member")
-                            .build()
-            );
+            return ResponseEntity.ok(ApiSuccessResponse.of(null, "Already a member"));
         }
 
         capsuleMemberRepository.save(
@@ -164,12 +146,7 @@ public class CapsuleController {
         capsule.setMemberCount(capsule.getMemberCount() + 1);
         capsuleRepository.save(capsule);
 
-        return ResponseEntity.ok(
-                ApiResponse.builder()
-                        .success(true)
-                        .message("Joined capsule successfully")
-                        .build()
-        );
+        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Joined capsule successfully"));
 
     }
 
