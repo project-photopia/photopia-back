@@ -10,6 +10,7 @@ import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleMemberRepository;
 import com.photopia.photopia_back.repository.CapsuleRepository;
 import com.photopia.photopia_back.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -148,5 +149,33 @@ public class CapsuleController {
 
         return ResponseEntity.ok(ApiSuccessResponse.of(null, "Joined capsule successfully"));
 
+    }
+
+    @Transactional
+    @DeleteMapping("/{capsuleId}")
+    public ResponseEntity<ApiResponse> deleteCapsule(
+            @PathVariable UUID capsuleId,
+            Authentication authentication
+    ) {
+        User me = (User) authentication.getPrincipal();
+
+        // Vérifie capsule + ownership en une requête (évite lazy issues)
+        Capsule capsule = capsuleRepository.findByIdAndUser_Id(capsuleId, me.getId())
+                .orElseThrow(() -> new RuntimeException("Capsule not found or forbidden"));
+
+        boolean isOwner = capsuleMemberRepository.existsByCapsuleIdAndUser_Id(capsuleId, me.getId());
+        boolean isAdmin = capsuleMemberRepository.existsByCapsuleIdAndUserIdAndRole(capsuleId, me.getId(), CapsuleMember.Role.ADMIN);
+
+        if (!isOwner && !isAdmin) {
+            throw new RuntimeException("Forbidden");
+        }
+
+        // Supprime les membres d'abord (FK)
+        capsuleMemberRepository.deleteByCapsuleId(capsuleId);
+
+        // Puis supprime la capsule
+        capsuleRepository.delete(capsule);
+
+        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Capsule deleted"));
     }
 }
