@@ -149,5 +149,4 @@ public class CapsuleController {
         return ResponseEntity.ok(ApiSuccessResponse.of(null, "Joined capsule successfully"));
 
     }
-
 }
