@@ -1,7 +1,8 @@
 package com.photopia.photopia_back.controller;
 
-import com.photopia.photopia_back.dto.CapsuleCreateRequest;
-import com.photopia.photopia_back.dto.CapsuleGetMyCapsulesResponse;
+import com.photopia.photopia_back.dto.capsule.CapsuleCreateRequest;
+import com.photopia.photopia_back.dto.capsule.CapsuleGetMyCapsulesResponse;
+import com.photopia.photopia_back.dto.capsule.CapsuleMemberResponse;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.ApiSuccessResponse;
 import com.photopia.photopia_back.model.Capsule;
@@ -100,6 +101,7 @@ public class CapsuleController {
         return ResponseEntity.ok(ApiSuccessResponse.of(data, "Capsules fetched"));
     }
 
+    // TODO: Passer l'invite-link et le join dans un controller CapsuleMemberController
     @GetMapping("/{capsuleId}/invite-link")
     public ResponseEntity<ApiResponse> getInviteLink(
             @PathVariable UUID capsuleId,
@@ -163,7 +165,7 @@ public class CapsuleController {
         Capsule capsule = capsuleRepository.findByIdAndUser_Id(capsuleId, me.getId())
                 .orElseThrow(() -> new RuntimeException("Capsule not found or forbidden"));
 
-        boolean isOwner = capsuleMemberRepository.existsByCapsuleIdAndUser_Id(capsuleId, me.getId());
+        boolean isOwner = capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, me.getId());
         boolean isAdmin = capsuleMemberRepository.existsByCapsuleIdAndUserIdAndRole(capsuleId, me.getId(), CapsuleMember.Role.ADMIN);
 
         if (!isOwner && !isAdmin) {
@@ -177,5 +179,24 @@ public class CapsuleController {
         capsuleRepository.delete(capsule);
 
         return ResponseEntity.ok(ApiSuccessResponse.of(null, "Capsule deleted"));
+    }
+
+    @GetMapping("/{capsuleId}/members")
+    public ResponseEntity<ApiResponse> getCapsuleMembers(
+            @PathVariable UUID capsuleId
+    ) {
+
+        var members = capsuleMemberRepository.findByCapsuleId(capsuleId);
+
+        var data = members.stream()
+                .map(m -> new CapsuleMemberResponse(
+                        m.getUserId(),
+                        m.getUser().getUsername(),  // ou getName()
+                        m.getUser().getEmail(),
+                        m.getRole()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(ApiSuccessResponse.of(data, "Members fetched"));
     }
 }

@@ -1,4 +1,4 @@
-package com.photopia.photopia_back.dto;
+package com.photopia.photopia_back.dto.capsule;
 
 import java.time.LocalDate;
 import java.util.UUID;

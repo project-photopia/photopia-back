@@ -16,8 +16,7 @@ public interface CapsuleMemberRepository extends JpaRepository<CapsuleMember, Ca
 
     void deleteByCapsuleId(UUID capsuleId);
 
-    boolean existsByCapsuleIdAndUser_Id(UUID capsuleId, UUID userId);
-
     boolean existsByCapsuleIdAndUserIdAndRole(UUID capsuleId, UUID userId, CapsuleMember.Role role);
 
+    List<CapsuleMember> findByCapsuleId(UUID capsuleId);
 }
