@@ -20,11 +20,5 @@ jobs:
           distribution: "corretto"
           cache: "maven"
 
-      - name: Run Lint
-        run: ./mvnw checkstyle:check
-
-      - name: Run Tests
-        run: ./mvnw test
-
-      - name: Build with Maven
-        run: ./mvnw verify -DskipTests
+      - name: Build and Verify
+        run: ./mvnw verify
