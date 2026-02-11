@@ -58,6 +58,13 @@ public class Capsule {
     @Builder.Default
     private Integer memberCount = 0;
 
+    private Double latitude;
+    private Double longitude;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_type_id")
+    private EventType eventType;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
