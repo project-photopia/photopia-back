@@ -14,4 +14,7 @@ public interface CapsuleRepository extends JpaRepository<Capsule, UUID> {
     Optional<Capsule> findByJoinToken(String joinToken);
 
     List<Capsule> findByUser(User user);
+
+    Optional<Capsule> findByIdAndUser_Id(UUID id, UUID userId);
+
 }
