@@ -10,7 +10,6 @@ import com.photopia.photopia_back.model.CapsuleMember;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleMemberRepository;
 import com.photopia.photopia_back.repository.CapsuleRepository;
-import com.photopia.photopia_back.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -24,16 +23,13 @@ import java.util.UUID;
 public class CapsuleController {
 
     private final CapsuleRepository capsuleRepository;
-    private final UserRepository userRepository;
     private final CapsuleMemberRepository capsuleMemberRepository;
 
     public CapsuleController(
             CapsuleRepository capsuleRepository,
-            UserRepository userRepository,
             CapsuleMemberRepository capsuleMemberRepository
     ) {
         this.capsuleRepository = capsuleRepository;
-        this.userRepository = userRepository;
         this.capsuleMemberRepository = capsuleMemberRepository;
     }
 
