@@ -1,7 +1,8 @@
 package com.photopia.photopia_back.controller;
 
-import com.photopia.photopia_back.dto.CapsuleCreateRequest;
-import com.photopia.photopia_back.dto.CapsuleGetMyCapsulesResponse;
+import com.photopia.photopia_back.dto.capsule.CapsuleCreateRequest;
+import com.photopia.photopia_back.dto.capsule.CapsuleGetMyCapsulesResponse;
+import com.photopia.photopia_back.dto.capsule.CapsuleMemberResponse;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.ApiSuccessResponse;
 import com.photopia.photopia_back.model.Capsule;
@@ -9,7 +10,7 @@ import com.photopia.photopia_back.model.CapsuleMember;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleMemberRepository;
 import com.photopia.photopia_back.repository.CapsuleRepository;
-import com.photopia.photopia_back.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -22,16 +23,13 @@ import java.util.UUID;
 public class CapsuleController {
 
     private final CapsuleRepository capsuleRepository;
-    private final UserRepository userRepository;
     private final CapsuleMemberRepository capsuleMemberRepository;
 
     public CapsuleController(
             CapsuleRepository capsuleRepository,
-            UserRepository userRepository,
             CapsuleMemberRepository capsuleMemberRepository
     ) {
         this.capsuleRepository = capsuleRepository;
-        this.userRepository = userRepository;
         this.capsuleMemberRepository = capsuleMemberRepository;
     }
 
@@ -99,6 +97,7 @@ public class CapsuleController {
         return ResponseEntity.ok(ApiSuccessResponse.of(data, "Capsules fetched"));
     }
 
+    // TODO: Passer l'invite-link et le join dans un controller CapsuleMemberController
     @GetMapping("/{capsuleId}/invite-link")
     public ResponseEntity<ApiResponse> getInviteLink(
             @PathVariable UUID capsuleId,
@@ -148,5 +147,51 @@ public class CapsuleController {
 
         return ResponseEntity.ok(ApiSuccessResponse.of(null, "Joined capsule successfully"));
 
+    }
+
+    @Transactional
+    @DeleteMapping("/{capsuleId}")
+    public ResponseEntity<ApiResponse> deleteCapsule(
+            @PathVariable UUID capsuleId,
+            Authentication authentication
+    ) {
+        User me = (User) authentication.getPrincipal();
+
+        // Vérifie capsule + ownership en une requête (évite lazy issues)
+        Capsule capsule = capsuleRepository.findByIdAndUser_Id(capsuleId, me.getId())
+                .orElseThrow(() -> new RuntimeException("Capsule not found or forbidden"));
+
+        boolean isOwner = capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, me.getId());
+        boolean isAdmin = capsuleMemberRepository.existsByCapsuleIdAndUserIdAndRole(capsuleId, me.getId(), CapsuleMember.Role.ADMIN);
+
+        if (!isOwner && !isAdmin) {
+            throw new RuntimeException("Forbidden");
+        }
+
+        capsuleMemberRepository.deleteByCapsuleId(capsuleId);
+
+        capsuleRepository.delete(capsule);
+
+        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Capsule deleted"));
+    }
+
+    @GetMapping("/{capsuleId}/members")
+    public ResponseEntity<ApiResponse> getCapsuleMembers(
+            @PathVariable UUID capsuleId
+    ) {
+
+        var members = capsuleMemberRepository.findByCapsuleId(capsuleId);
+
+        var data = members.stream()
+                .map(m -> new CapsuleMemberResponse(
+                        m.getUserId(),
+                        m.getUser().getUsername(),
+                        m.getUser().getEmail(),
+                        m.getUser().getAvatarUrl(),
+                        m.getRole()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(ApiSuccessResponse.of(data, "Members fetched"));
     }
 }

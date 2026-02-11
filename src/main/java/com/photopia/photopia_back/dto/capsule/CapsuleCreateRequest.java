@@ -1,4 +1,4 @@
-package com.photopia.photopia_back.dto;
+package com.photopia.photopia_back.dto.capsule;
 
 public record CapsuleCreateRequest(
         String name,
