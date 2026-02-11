@@ -7,6 +7,7 @@ import java.util.UUID;
 public record CapsuleMemberResponse(
         UUID userId,
         String username,
+        String email,
         String avatarUrl,
         CapsuleMember.Role role
 ) {}

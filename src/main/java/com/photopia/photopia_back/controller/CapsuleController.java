@@ -168,10 +168,8 @@ public class CapsuleController {
             throw new RuntimeException("Forbidden");
         }
 
-        // Supprime les membres d'abord (FK)
         capsuleMemberRepository.deleteByCapsuleId(capsuleId);
 
-        // Puis supprime la capsule
         capsuleRepository.delete(capsule);
 
         return ResponseEntity.ok(ApiSuccessResponse.of(null, "Capsule deleted"));
@@ -187,8 +185,9 @@ public class CapsuleController {
         var data = members.stream()
                 .map(m -> new CapsuleMemberResponse(
                         m.getUserId(),
-                        m.getUser().getUsername(),  // ou getName()
+                        m.getUser().getUsername(),
                         m.getUser().getEmail(),
+                        m.getUser().getAvatarUrl(),
                         m.getRole()
                 ))
                 .toList();
