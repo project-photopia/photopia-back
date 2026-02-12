@@ -3,6 +3,7 @@ package com.photopia.photopia_back.controller;
 import com.photopia.photopia_back.dto.capsule.CapsuleCreateRequest;
 import com.photopia.photopia_back.dto.capsule.CapsuleGetMyCapsulesResponse;
 import com.photopia.photopia_back.dto.capsule.CapsuleMemberResponse;
+import com.photopia.photopia_back.dto.capsule.CapsuleOwnerResponse;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.ApiSuccessResponse;
 import com.photopia.photopia_back.model.Capsule;
@@ -81,12 +82,25 @@ public class CapsuleController {
                 .map(c -> new CapsuleGetMyCapsulesResponse(
                         c.getId(),
                         c.getName(),
+                        c.getCoverUrl(),
                         c.getStartDate(),
                         c.getEndDate(),
-                        c.getJoinToken(),
+                        c.getColor(),
                         c.getIsPrivate(),
+                        c.getJoinToken(),
+                        new CapsuleOwnerResponse(
+                                c.getUser().getId(),
+                                c.getUser().getUsername(),
+                                c.getUser().getEmail(),
+                                c.getUser().getAvatarUrl()
+                        ), // c'est le owner
                         c.getIsArchived(),
-                        c.getMemberCount()
+                        c.getMemberCount(),
+                        c.getLatitude(),
+                        c.getLongitude(),
+                        c.getEventType(),
+                        c.getCreatedAt(),
+                        c.getUpdatedAt()
                 ))
                 .toList();
 
