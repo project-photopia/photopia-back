@@ -8,7 +8,6 @@ import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleRepository;
 import com.photopia.photopia_back.repository.MediaRepository;
 import jakarta.transaction.Transactional;
-
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -20,12 +19,17 @@ public class MediaService {
     private final R2Service r2Service;
     private final MediaRepository mediaRepository;
     private final CapsuleRepository capsuleRepository;
+    private final PushNotificationService pushNotificationService;
 
-    public MediaService(R2Service r2Service, MediaRepository mediaRepository,
-            CapsuleRepository capsuleRepository) {
+    public MediaService(
+            R2Service r2Service,
+            MediaRepository mediaRepository,
+            CapsuleRepository capsuleRepository,
+            PushNotificationService pushNotificationService) {
         this.r2Service = r2Service;
         this.mediaRepository = mediaRepository;
         this.capsuleRepository = capsuleRepository;
+        this.pushNotificationService = pushNotificationService;
     }
 
     @Transactional
@@ -56,7 +60,15 @@ public class MediaService {
                 .longitude(request.longitude())
                 .build();
 
-        return mediaRepository.save(media);
+        Media savedMedia = mediaRepository.save(media);
+
+        pushNotificationService.notifyCapsuleMembersNewMedia(
+                capsule.getId(),
+                user.getId(),
+                user.getUsername(),
+                capsule.getName());
+
+        return savedMedia;
     }
 
     public PresignedUrlResponse getPresignedUrl(String contentType, UUID userId) {

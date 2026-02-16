@@ -6,6 +6,7 @@ import com.photopia.photopia_back.model.Media;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleRepository;
 import com.photopia.photopia_back.repository.MediaRepository;
+import com.photopia.photopia_back.service.PushNotificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,6 +33,9 @@ class MediaServiceTest {
 
         @Mock
         private R2Service r2Service;
+
+        @Mock
+        private PushNotificationService pushNotificationService;
 
         @InjectMocks
         private MediaService mediaService;
