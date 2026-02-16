@@ -15,6 +15,8 @@ import com.photopia.photopia_back.dto.MediaRegisterRequest;
 import com.photopia.photopia_back.dto.CommentResponse;
 import com.photopia.photopia_back.dto.CommentRequest;
 import com.photopia.photopia_back.dto.ReactionRequest;
+import com.photopia.photopia_back.model.ApiResponse;
+import com.photopia.photopia_back.model.ApiSuccessResponse;
 import com.photopia.photopia_back.service.CommentService;
 import com.photopia.photopia_back.service.ReactionService;
 import java.util.List;
@@ -36,69 +38,72 @@ public class MediaController {
     }
 
     @GetMapping("/upload-url")
-    public ResponseEntity<PresignedUrlResponse> getUploadUrl(
+    public ResponseEntity<ApiResponse> getUploadUrl(
             @RequestParam("contentType") String contentType) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return ResponseEntity.ok(mediaService.getPresignedUrl(contentType, currentUser.getId()));
+        PresignedUrlResponse presignedUrl = mediaService.getPresignedUrl(contentType, currentUser.getId());
+        return ResponseEntity.ok(ApiSuccessResponse.of(presignedUrl, "Upload URL generated"));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<MediaResponse> registerMedia(
+    public ResponseEntity<ApiResponse> registerMedia(
             @RequestBody MediaRegisterRequest request) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Media media = mediaService.registerMedia(request, currentUser);
-        return ResponseEntity.ok(mapToResponse(media));
+        return ResponseEntity.ok(ApiSuccessResponse.of(mapToResponse(media), "Media registered"));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MediaResponse> getMedia(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse> getMedia(@PathVariable UUID id) {
         Media media = mediaService.getMediaById(id);
-        return ResponseEntity.ok(mapToResponse(media));
+        return ResponseEntity.ok(ApiSuccessResponse.of(mapToResponse(media), "Media fetched"));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteMedia(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse> deleteMedia(@PathVariable UUID id) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         mediaService.deleteMedia(id, currentUser);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Media deleted"));
     }
 
     // --- Comments ---
 
     @PostMapping("/{id}/comments")
-    public ResponseEntity<CommentResponse> addComment(
+    public ResponseEntity<ApiResponse> addComment(
             @PathVariable UUID id,
             @RequestBody CommentRequest request) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        return ResponseEntity.ok(commentService.addComment(id, currentUser, request.content()));
+        CommentResponse comment = commentService.addComment(id, currentUser, request.content());
+        return ResponseEntity.ok(ApiSuccessResponse.of(comment, "Comment added"));
     }
 
     @GetMapping("/{id}/comments")
-    public ResponseEntity<List<CommentResponse>> getComments(
+    public ResponseEntity<ApiResponse> getComments(
             @PathVariable UUID id) {
-        return ResponseEntity.ok(commentService.getCommentsByMedia(id));
+        List<CommentResponse> comments = commentService.getCommentsByMedia(id);
+        return ResponseEntity.ok(ApiSuccessResponse.of(comments, "Comments fetched"));
     }
 
     @DeleteMapping("/comments/{commentId}")
-    public ResponseEntity<Void> deleteComment(@PathVariable UUID commentId) {
+    public ResponseEntity<ApiResponse> deleteComment(@PathVariable UUID commentId) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         commentService.deleteComment(commentId, currentUser);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Comment deleted"));
     }
 
     // --- Reactions ---
 
     @PostMapping("/{id}/react")
-    public ResponseEntity<Void> reactToMedia(
+    public ResponseEntity<ApiResponse> reactToMedia(
             @PathVariable UUID id,
             @RequestBody ReactionRequest request) {
         User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         reactionService.toggleReaction(id, currentUser, request.emoji());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Reaction toggled"));
     }
 
     @GetMapping("/capsule/{capsuleId}")
-    public ResponseEntity<List<MediaResponse>> getCapsuleMedias(
+    public ResponseEntity<ApiResponse> getCapsuleMedias(
             @PathVariable UUID capsuleId) {
 
         List<Media> medias = mediaService.getMediasByCapsuleId(capsuleId);
@@ -107,7 +112,7 @@ public class MediaController {
                 .map(this::mapToResponse)
                 .toList();
 
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(ApiSuccessResponse.of(responses, "Capsule medias fetched"));
     }
 
     private MediaResponse mapToResponse(Media media) {

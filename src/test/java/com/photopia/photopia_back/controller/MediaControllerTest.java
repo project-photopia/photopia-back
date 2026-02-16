@@ -84,8 +84,8 @@ class MediaControllerTest {
         mockMvc.perform(get("/api/media/upload-url")
                 .param("contentType", "image/jpeg"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.uploadUrl").value("http://original-upload"))
-                .andExpect(jsonPath("$.key").value("key"));
+                .andExpect(jsonPath("$.data.uploadUrl").value("http://original-upload"))
+                .andExpect(jsonPath("$.data.key").value("key"));
     }
 
     @Test
@@ -111,8 +111,6 @@ class MediaControllerTest {
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                // .andExpect(jsonPath("$.originalUrl").value("http://signed-get-url")) // Check
-                // mapped response
-                .andExpect(jsonPath("$.id").exists());
+                .andExpect(jsonPath("$.data.id").exists());
     }
 }
