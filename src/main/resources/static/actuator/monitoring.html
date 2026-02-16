@@ -4,157 +4,289 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photopia Monitoring</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #bb86fc;
+            --success-color: #03dac6;
+            --error-color: #cf6679;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
             padding: 20px;
-            background-color: #f5f5f7;
-            color: #1d1d1f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+
         h1 {
-            text-align: center;
-            margin-bottom: 40px;
+            color: var(--accent-color);
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(187, 134, 252, 0.3);
         }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
         .card {
-            background: white;
+            background-color: var(--card-bg);
             border-radius: 12px;
             padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
         }
-        .status {
-            padding: 5px 12px;
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
             border-radius: 20px;
+            font-size: 0.8rem;
             font-weight: bold;
-            font-size: 0.9em;
+            text-transform: uppercase;
         }
-        .up {
-            background-color: #e6f4ea;
-            color: #1e8e3e;
+
+        .status-up {
+            background-color: rgba(3, 218, 198, 0.2);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
         }
-        .down {
-            background-color: #fce8e6;
-            color: #d93025;
+
+        .status-down {
+            background-color: rgba(207, 102, 121, 0.2);
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
         }
-        .unknown {
-            background-color: #f1f3f4;
-            color: #5f6368;
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
         }
-        .details {
-            font-size: 0.85em;
-            color: #666;
-            margin-top: 5px;
+
+        canvas {
+            width: 100% !important;
+            height: 250px !important;
+        }
+        
+        #health-details {
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .health-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            padding: 5px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>System Status</h1>
-        <div id="info-card" class="card" style="display:none; flex-direction: column; align-items: flex-start;">
-            <div style="font-weight: bold; margin-bottom: 5px;">Build Info</div>
-            <div id="build-details" style="font-size: 0.9em; color: #555;">Loading...</div>
+
+    <h1>Photopia Monitoring</h1>
+
+    <div class="dashboard-grid">
+        <!-- Health Status Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">System Health</span>
+                <span id="global-status" class="status-badge status-up">Checking...</span>
+            </div>
+            <div id="health-details">
+                <!-- Details injected by JS -->
+            </div>
         </div>
-        <div id="dashboard">Loading...</div>
+
+        <!-- JVM Memory Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">JVM Memory</span>
+            </div>
+            <canvas id="memoryChart"></canvas>
+        </div>
+
+        <!-- HTTP Requests Card -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">HTTP Requests (Total)</span>
+            </div>
+            <div class="metric-value" id="request-count">0</div>
+             <canvas id="requestsChart"></canvas>
+        </div>
+        
+        <!-- CPU Usage Card -->
+        <div class="card">
+             <div class="card-header">
+                <span class="card-title">CPU Usage</span>
+            </div>
+            <canvas id="cpuChart"></canvas>
+        </div>
     </div>
 
     <script>
-        async function fetchAll() {
-            await Promise.all([fetchHealth(), fetchInfo()]);
-        }
+        // --- Chart Configurations ---
+        Chart.defaults.color = '#a0a0a0';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
 
-        async function fetchInfo() {
-            try {
-                const response = await fetch('/actuator/info');
-                if (response.ok) {
-                    const data = await response.json();
-                    renderInfo(data);
+        const createLineChart = (ctx, label, color) => {
+            return new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: label,
+                        data: [],
+                        borderColor: color,
+                        backgroundColor: color.replace('1)', '0.2)'),
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { display: false }, // Hide x-axis labels for clean look
+                        y: { beginAtZero: true }
+                    },
+                    animation: false
                 }
-            } catch (error) {
-                console.error('Error fetching info:', error);
-            }
-        }
+            });
+        };
 
-        function renderInfo(data) {
-            const infoCard = document.getElementById('info-card');
-            const details = document.getElementById('build-details');
-            
-            if (data.git && data.git.commit) {
-                infoCard.style.display = 'flex';
-                details.innerHTML = `
-                    <div>Commit: <span style="font-family: monospace;">${data.git.commit.id.abbrev}</span></div>
-                    <div>Branch: ${data.git.branch}</div>
-                    <div>Time: ${data.git.commit.time}</div>
-                `;
-            }
-        }
+        const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+        const memoryChart = createLineChart(memoryCtx, 'Used Memory (MB)', 'rgba(187, 134, 252, 1)');
 
-        async function fetchHealth() {
+        const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+        const cpuChart = createLineChart(cpuCtx, 'System CPU Load (%)', 'rgba(3, 218, 198, 1)');
+        
+        // --- Data Fetching Logic ---
+
+        const updateChart = (chart, value) => {
+            const now = new Date().toLocaleTimeString();
+            if (chart.data.labels.length > 20) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+            chart.data.labels.push(now);
+            chart.data.datasets[0].data.push(value);
+            chart.update();
+        };
+
+        const fetchHealth = async () => {
             try {
                 const response = await fetch('/actuator/health');
                 const data = await response.json();
-                renderDashboard(data);
+                
+                // Update Global Status
+                const statusBadge = document.getElementById('global-status');
+                statusBadge.textContent = data.status;
+                if (data.status === 'UP') {
+                    statusBadge.className = 'status-badge status-up';
+                } else {
+                    statusBadge.className = 'status-badge status-down';
+                }
+
+                // Update Details
+                const detailsContainer = document.getElementById('health-details');
+                detailsContainer.innerHTML = '';
+                
+                if(data.components) {
+                    for (const [key, value] of Object.entries(data.components)) {
+                        const div = document.createElement('div');
+                        div.className = 'health-item';
+                        const statusClass = value.status === 'UP' ? 'status-up' : 'status-down';
+                        // Simple check for disk space detail or generic detail
+                        let detailText = value.status;
+                        if (key === 'diskSpace' && value.details) {
+                            detailText += ` (${(value.details.free / 1024 / 1024 / 1024).toFixed(2)} GB free)`;
+                        }
+                        div.innerHTML = `<span>${key}</span> <span class="${statusClass}" style="padding: 2px 8px; border-radius: 4px; font-size: 0.8em;">${detailText}</span>`;
+                        detailsContainer.appendChild(div);
+                    }
+                }
             } catch (error) {
-                document.getElementById('dashboard').innerHTML = '<div class="card">Error loading status</div>';
+                console.error('Error fetching health:', error);
             }
-        }
+        };
 
-        function renderDashboard(data) {
-            const container = document.getElementById('dashboard');
-            container.innerHTML = '';
+        const fetchMetrics = async () => {
+             // 1. Memory
+            try {
+                const res = await fetch('/actuator/metrics/jvm.memory.used');
+                const data = await res.json();
+                const usedMB = (data.measurements[0].value / 1024 / 1024).toFixed(1);
+                updateChart(memoryChart, usedMB);
+            } catch (e) { console.error('Memory metric error', e); }
 
-            // Global Status
-            createCard(container, 'Application Scope', data.status);
-
-            // Components
-            if (data.components) {
-                for (const [key, value] of Object.entries(data.components)) {
-                    // Skip diskSpace if disabled (it shouldn't be here anyway but good to be safe)
-                    if (key === 'diskSpace') continue;
-                    createCard(container, formatName(key), value.status, value.details);
+            // 2. HTTP Requests
+            try {
+                const res = await fetch('/actuator/metrics/http.server.requests');
+                if(res.ok) {
+                    const data = await res.json();
+                    const count = data.measurements.find(m => m.statistic === 'COUNT')?.value || 0;
+                    document.getElementById('request-count').textContent = count;
                 }
-            }
-        }
-
-        function createCard(container, name, status, details) {
-            const card = document.createElement('div');
-            card.className = 'card';
+            } catch (e) { console.error('HTTP metric error', e); }
             
-            const statusClass = status === 'UP' ? 'up' : (status === 'DOWN' ? 'down' : 'unknown');
-            
-            let detailsHtml = '';
-            if (details) {
-                // Formatting details object nicely
-                detailsHtml = `<div class="details">`;
-                for (const [k, v] of Object.entries(details)) {
-                    detailsHtml += `<div>${k}: ${v}</div>`;
-                }
-                detailsHtml += `</div>`;
-            }
+             // 3. CPU (System)
+            try {
+                // Try system.cpu.usage or process.cpu.usage
+                const res = await fetch('/actuator/metrics/system.cpu.usage');
+                 if(res.ok) {
+                    const data = await res.json();
+                     // value is 0.0 to 1.0 usually
+                    const percent = (data.measurements[0].value * 100).toFixed(1);
+                    updateChart(cpuChart, percent);
+                 }
+            } catch (e) { console.error('CPU metric error', e); }
+        };
 
-            card.innerHTML = `
-                <div>
-                    <strong>${name}</strong>
-                    ${detailsHtml}
-                </div>
-                <span class="status ${statusClass}">${status}</span>
-            `;
-            container.appendChild(card);
-        }
+        // --- Init ---
+        setInterval(() => {
+            fetchHealth();
+            fetchMetrics();
+        }, 5000); // Update every 5 seconds
 
-        function formatName(name) {
-            return name.charAt(0).toUpperCase() + name.slice(1);
-        }
+        fetchHealth();
+        fetchMetrics();
 
-        fetchAll();
-        setInterval(fetchAll, 10000); // Refresh every 10s
     </script>
 </body>
 </html>
