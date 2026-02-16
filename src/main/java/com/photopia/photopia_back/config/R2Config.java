@@ -30,4 +30,15 @@ public class R2Config {
                                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
                                 .build();
         }
+
+        @Bean
+        public software.amazon.awssdk.services.s3.S3Client s3Client() {
+                AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+
+                return software.amazon.awssdk.services.s3.S3Client.builder()
+                                .endpointOverride(URI.create("https://" + accountId + ".r2.cloudflarestorage.com"))
+                                .region(Region.US_EAST_1)
+                                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                                .build();
+        }
 }
