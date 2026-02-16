@@ -247,7 +247,7 @@
         };
 
         const fetchMetrics = async () => {
-             // 1. Memory
+             // Memory
             try {
                 const res = await fetch('/actuator/metrics/jvm.memory.used');
                 const data = await res.json();
@@ -255,7 +255,7 @@
                 updateChart(memoryChart, usedMB);
             } catch (e) { console.error('Memory metric error', e); }
 
-            // 2. HTTP Requests
+            // HTTP Requests
             try {
                 const res = await fetch('/actuator/metrics/http.server.requests');
                 if(res.ok) {
@@ -265,9 +265,8 @@
                 }
             } catch (e) { console.error('HTTP metric error', e); }
             
-             // 3. CPU (System)
+             // CPU (System)
             try {
-                // Try system.cpu.usage or process.cpu.usage
                 const res = await fetch('/actuator/metrics/system.cpu.usage');
                  if(res.ok) {
                     const data = await res.json();
