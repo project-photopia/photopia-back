@@ -28,7 +28,9 @@ public class SecurityConfig {
                                                                 "/api/users/login",
                                                                 "/api/users/register",
                                                                 "/swagger-ui/**",
-                                                                "/v3/api-docs/**")
+                                                                "/api/users/register",
+                                                                "/v3/api-docs/**",
+                                                                "/actuator/**")
                                                 .permitAll() // login/register accessibles sans token
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
