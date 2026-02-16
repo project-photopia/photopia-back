@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photopia Monitoring</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .up {
+            background-color: #e6f4ea;
+            color: #1e8e3e;
+        }
+        .down {
+            background-color: #fce8e6;
+            color: #d93025;
+        }
+        .unknown {
+            background-color: #f1f3f4;
+            color: #5f6368;
+        }
+        .details {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>System Status</h1>
+        <div id="info-card" class="card" style="display:none; flex-direction: column; align-items: flex-start;">
+            <div style="font-weight: bold; margin-bottom: 5px;">Build Info</div>
+            <div id="build-details" style="font-size: 0.9em; color: #555;">Loading...</div>
+        </div>
+        <div id="dashboard">Loading...</div>
+    </div>
+
+    <script>
+        async function fetchAll() {
+            await Promise.all([fetchHealth(), fetchInfo()]);
+        }
+
+        async function fetchInfo() {
+            try {
+                const response = await fetch('/actuator/info');
+                if (response.ok) {
+                    const data = await response.json();
+                    renderInfo(data);
+                }
+            } catch (error) {
+                console.error('Error fetching info:', error);
+            }
+        }
+
+        function renderInfo(data) {
+            const infoCard = document.getElementById('info-card');
+            const details = document.getElementById('build-details');
+            
+            if (data.git && data.git.commit) {
+                infoCard.style.display = 'flex';
+                details.innerHTML = `
+                    <div>Commit: <span style="font-family: monospace;">${data.git.commit.id.abbrev}</span></div>
+                    <div>Branch: ${data.git.branch}</div>
+                    <div>Time: ${data.git.commit.time}</div>
+                `;
+            }
+        }
+
+        async function fetchHealth() {
+            try {
+                const response = await fetch('/actuator/health');
+                const data = await response.json();
+                renderDashboard(data);
+            } catch (error) {
+                document.getElementById('dashboard').innerHTML = '<div class="card">Error loading status</div>';
+            }
+        }
+
+        function renderDashboard(data) {
+            const container = document.getElementById('dashboard');
+            container.innerHTML = '';
+
+            // Global Status
+            createCard(container, 'Application Scope', data.status);
+
+            // Components
+            if (data.components) {
+                for (const [key, value] of Object.entries(data.components)) {
+                    // Skip diskSpace if disabled (it shouldn't be here anyway but good to be safe)
+                    if (key === 'diskSpace') continue;
+                    createCard(container, formatName(key), value.status, value.details);
+                }
+            }
+        }
+
+        function createCard(container, name, status, details) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const statusClass = status === 'UP' ? 'up' : (status === 'DOWN' ? 'down' : 'unknown');
+            
+            let detailsHtml = '';
+            if (details) {
+                // Formatting details object nicely
+                detailsHtml = `<div class="details">`;
+                for (const [k, v] of Object.entries(details)) {
+                    detailsHtml += `<div>${k}: ${v}</div>`;
+                }
+                detailsHtml += `</div>`;
+            }
+
+            card.innerHTML = `
+                <div>
+                    <strong>${name}</strong>
+                    ${detailsHtml}
+                </div>
+                <span class="status ${statusClass}">${status}</span>
+            `;
+            container.appendChild(card);
+        }
+
+        function formatName(name) {
+            return name.charAt(0).toUpperCase() + name.slice(1);
+        }
+
+        fetchAll();
+        setInterval(fetchAll, 10000); // Refresh every 10s
+    </script>
+</body>
+</html>
