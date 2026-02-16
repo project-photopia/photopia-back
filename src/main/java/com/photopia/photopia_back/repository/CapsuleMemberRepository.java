@@ -19,4 +19,7 @@ public interface CapsuleMemberRepository extends JpaRepository<CapsuleMember, Ca
     boolean existsByCapsuleIdAndUserIdAndRole(UUID capsuleId, UUID userId, CapsuleMember.Role role);
 
     List<CapsuleMember> findByCapsuleId(UUID capsuleId);
+
+    @org.springframework.data.jpa.repository.Query("SELECT u.email FROM CapsuleMember cm JOIN cm.user u WHERE cm.capsuleId = :capsuleId AND cm.userId != :excludeUserId")
+    List<String> findMemberEmails(UUID capsuleId, UUID excludeUserId);
 }
