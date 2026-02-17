@@ -48,7 +48,7 @@ public class CapsuleController {
         @GetMapping("")
         public ResponseEntity<ApiResponse> getMyCapsules(Authentication authentication) {
                 User currentUser = (User) authentication.getPrincipal();
-                List<CapsuleGetMyCapsulesResponse> data = capsuleService.getMyCapsules(currentUser);
+                List<CapsuleGetMyCapsulesResponse> data = capsuleService.getMyCapsulesByUserId(currentUser.getId());
 
                 if (data.isEmpty()) {
                         return ResponseEntity.ok(ApiSuccessResponse.of(data, "No capsules found"));

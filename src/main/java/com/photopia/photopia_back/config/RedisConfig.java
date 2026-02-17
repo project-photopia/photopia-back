@@ -1,18 +1,33 @@
 package com.photopia.photopia_back.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
 
 @Configuration
 @EnableCaching
-public class RedisConfig {
+public class RedisConfig implements CachingConfigurer {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisConfig.class);
 
     /**
      * Reminder :
@@ -37,13 +52,13 @@ public class RedisConfig {
         template.setConnectionFactory(connectionFactory);
 
         // Configure ObjectMapper suitable for complex types and dates
-        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
-        objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.activateDefaultTyping(
                 objectMapper.getPolymorphicTypeValidator(),
-                com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping.NON_FINAL,
-                com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY);
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY);
 
         GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
@@ -60,23 +75,54 @@ public class RedisConfig {
     }
 
     @Bean
-    public org.springframework.data.redis.cache.RedisCacheConfiguration cacheConfiguration() {
+    public RedisCacheConfiguration cacheConfiguration() {
         // Configure ObjectMapper (same as above for consistency in cache manager)
-        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
-        objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         objectMapper.activateDefaultTyping(
                 objectMapper.getPolymorphicTypeValidator(),
-                com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping.NON_FINAL,
-                com.fasterxml.jackson.annotation.JsonTypeInfo.As.PROPERTY);
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY);
 
         GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
-        return org.springframework.data.redis.cache.RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(java.time.Duration.ofMinutes(60)) // Default TTL
+        return RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofMinutes(60)) // Default TTL
                 .disableCachingNullValues()
                 .serializeValuesWith(
-                        org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair
+                        RedisSerializationContext.SerializationPair
                                 .fromSerializer(serializer));
+    }
+
+    @Override
+    public CacheErrorHandler errorHandler() {
+        return new CacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException exception, Cache cache, Object key) {
+                // Log and ignore to treat as cache miss
+                log.warn("Redis cache get error for key: {}. Exception: {}", key, exception.getMessage());
+                try {
+                    cache.evict(key);
+                } catch (Exception e) {
+                    log.error("Failed to evict after get error: {}", e.getMessage());
+                }
+            }
+
+            @Override
+            public void handleCachePutError(RuntimeException exception, Cache cache, Object key, Object value) {
+                log.warn("Redis cache put error for key: {}. Exception: {}", key, exception.getMessage());
+            }
+
+            @Override
+            public void handleCacheEvictError(RuntimeException exception, Cache cache, Object key) {
+                log.warn("Redis cache evict error for key: {}. Exception: {}", key, exception.getMessage());
+            }
+
+            @Override
+            public void handleCacheClearError(RuntimeException exception, Cache cache) {
+                log.warn("Redis cache clear error. Exception: {}", exception.getMessage());
+            }
+        };
     }
 }
