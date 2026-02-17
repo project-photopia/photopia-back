@@ -3,6 +3,7 @@ package com.photopia.photopia_back.repository;
 import com.photopia.photopia_back.model.CapsuleMember;
 import com.photopia.photopia_back.model.CapsuleMemberId;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -20,6 +21,6 @@ public interface CapsuleMemberRepository extends JpaRepository<CapsuleMember, Ca
 
     List<CapsuleMember> findByCapsuleId(UUID capsuleId);
 
-    @org.springframework.data.jpa.repository.Query("SELECT u.email FROM CapsuleMember cm JOIN cm.user u WHERE cm.capsuleId = :capsuleId AND cm.userId != :excludeUserId")
+    @Query("SELECT u.email FROM CapsuleMember cm JOIN cm.user u WHERE cm.capsuleId = :capsuleId AND cm.userId != :excludeUserId AND u.email IS NOT NULL")
     List<String> findMemberEmails(UUID capsuleId, UUID excludeUserId);
 }
