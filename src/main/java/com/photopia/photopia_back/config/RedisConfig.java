@@ -8,11 +8,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.annotation.CachingConfigurer;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -26,6 +28,23 @@ import java.time.Duration;
 public class RedisConfig implements CachingConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(RedisConfig.class);
+
+    /**
+     * Reminder :
+     * Forces the initialization of the CacheManager (and thus Redis) at startup.
+     * With lazy-initialization=true, the first GET /api/capsules request would
+     * otherwise
+     * create the @Cacheable proxy and initialize Redis during the request, which
+     * could cause a 403.
+     */
+    @Bean
+    @Lazy(false)
+    public CacheManagerInitializer cacheManagerInitializer(CacheManager cacheManager) {
+        return new CacheManagerInitializer();
+    }
+
+    private static final class CacheManagerInitializer {
+    }
 
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
