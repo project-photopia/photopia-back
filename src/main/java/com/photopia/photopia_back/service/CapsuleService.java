@@ -36,7 +36,7 @@ public class CapsuleService {
     }
 
     @Transactional
-    @CacheEvict(value = "my_capsules_v2", key = "#owner.id")
+    @CacheEvict(value = "my_capsules_v2", key = "#owner.id.toString()")
     public Capsule createCapsule(CapsuleCreateRequest request, User owner) {
         Capsule capsule = new Capsule();
         capsule.setName(request.name());
@@ -65,9 +65,9 @@ public class CapsuleService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "my_capsules_v2", key = "#currentUser.id")
-    public List<CapsuleGetMyCapsulesResponse> getMyCapsules(User currentUser) {
-        var capsules = capsuleRepository.findByUserOrMember(currentUser.getId());
+    @Cacheable(value = "my_capsules_v2", key = "#userId.toString()")
+    public List<CapsuleGetMyCapsulesResponse> getMyCapsulesByUserId(UUID userId) {
+        var capsules = capsuleRepository.findByUserOrMember(userId);
 
         return capsules.stream()
                 .map(c -> {
@@ -110,7 +110,7 @@ public class CapsuleService {
     }
 
     @Transactional
-    @CacheEvict(value = "my_capsules_v2", key = "#user.id")
+    @CacheEvict(value = "my_capsules_v2", key = "#user.id.toString()")
     public void joinCapsule(String token, User user) {
         Capsule capsule = capsuleRepository.findByJoinToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid invite token"));
@@ -142,7 +142,7 @@ public class CapsuleService {
     }
 
     @Transactional
-    @CacheEvict(value = "my_capsules_v2", key = "#me.id")
+    @CacheEvict(value = "my_capsules_v2", key = "#me.id.toString()")
     public void deleteCapsule(UUID capsuleId, User me) {
         Capsule capsule = capsuleRepository.findByIdAndUser_Id(capsuleId, me.getId())
                 .orElseThrow(() -> new RuntimeException("Capsule not found or forbidden"));
