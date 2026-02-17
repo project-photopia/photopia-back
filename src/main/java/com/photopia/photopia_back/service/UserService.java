@@ -33,7 +33,7 @@ public class UserService {
         return repo.findAll();
     }
 
-    @Cacheable(value = "users_v1", key = "#id")
+    @Cacheable(value = "users_v2", key = "#id")
     public User getUserById(UUID id) {
         return repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
     }
@@ -81,7 +81,7 @@ public class UserService {
         return data;
     }
 
-    @CacheEvict(value = "users_v1", key = "#user.id")
+    @CacheEvict(value = "users_v2", key = "#user.id")
     public User updateUser(User user) {
         return repo.save(user);
     }
