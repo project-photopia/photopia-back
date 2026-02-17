@@ -1,25 +1,24 @@
 package com.photopia.photopia_back.controller;
 
-import com.photopia.photopia_back.model.Media;
-import com.photopia.photopia_back.service.MediaService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
-import com.photopia.photopia_back.model.User;
-import org.springframework.security.core.context.SecurityContextHolder;
-
-import com.photopia.photopia_back.dto.PresignedUrlResponse;
-import com.photopia.photopia_back.dto.MediaResponse;
-import com.photopia.photopia_back.dto.MediaRegisterRequest;
-import com.photopia.photopia_back.dto.CommentResponse;
 import com.photopia.photopia_back.dto.CommentRequest;
+import com.photopia.photopia_back.dto.CommentResponse;
+import com.photopia.photopia_back.dto.MediaRegisterRequest;
+import com.photopia.photopia_back.dto.MediaResponse;
+import com.photopia.photopia_back.dto.PresignedUrlResponse;
 import com.photopia.photopia_back.dto.ReactionRequest;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.ApiSuccessResponse;
+import com.photopia.photopia_back.model.Media;
+import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.service.CommentService;
+import com.photopia.photopia_back.service.MediaService;
 import com.photopia.photopia_back.service.ReactionService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/media")
