@@ -11,9 +11,10 @@ import com.photopia.photopia_back.model.CapsuleMember;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.CapsuleMemberRepository;
 import com.photopia.photopia_back.repository.CapsuleRepository;
-import jakarta.transaction.Transactional;
+import com.photopia.photopia_back.repository.EventTypeRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -25,13 +26,16 @@ public class CapsuleController {
 
     private final CapsuleRepository capsuleRepository;
     private final CapsuleMemberRepository capsuleMemberRepository;
+    private final EventTypeRepository eventTypeRepository;
 
     public CapsuleController(
             CapsuleRepository capsuleRepository,
-            CapsuleMemberRepository capsuleMemberRepository
+            CapsuleMemberRepository capsuleMemberRepository,
+            EventTypeRepository eventTypeRepository
     ) {
         this.capsuleRepository = capsuleRepository;
         this.capsuleMemberRepository = capsuleMemberRepository;
+        this.eventTypeRepository = eventTypeRepository;
     }
 
     @PostMapping("/create")
@@ -59,6 +63,12 @@ public class CapsuleController {
         capsule.setIsArchived(false); // Default logic
         capsule.setMemberCount(1);
 
+        // Event type (Trip, Event)
+        if (request.eventTypeName() != null && !request.eventTypeName().isBlank()) {
+            eventTypeRepository.findByName(request.eventTypeName())
+                    .ifPresent(capsule::setEventType);
+        }
+
         Capsule savedCapsule = capsuleRepository.save(capsule);
 
         CapsuleMember capsuleMember = CapsuleMember.builder()
@@ -72,36 +82,40 @@ public class CapsuleController {
         return ResponseEntity.ok(ApiSuccessResponse.of(savedCapsule, "Album created"));
     }
 
+    @Transactional(readOnly = true)
     @GetMapping("")
     public ResponseEntity<ApiResponse> getMyCapsules(Authentication authentication) {
 
-        User owner = (User) authentication.getPrincipal();
-        var capsules = capsuleRepository.findByUser(owner);
+        User currentUser = (User) authentication.getPrincipal();
+        var capsules = capsuleRepository.findByUserOrMember(currentUser.getId());
 
         var data = capsules.stream()
-                .map(c -> new CapsuleGetMyCapsulesResponse(
-                        c.getId(),
-                        c.getName(),
-                        c.getCoverUrl(),
-                        c.getStartDate(),
-                        c.getEndDate(),
-                        c.getColor(),
-                        c.getIsPrivate(),
-                        c.getJoinToken(),
-                        new CapsuleOwnerResponse(
-                                c.getUser().getId(),
-                                c.getUser().getUsername(),
-                                c.getUser().getEmail(),
-                                c.getUser().getAvatarUrl()
-                        ), // c'est le owner
-                        c.getIsArchived(),
-                        c.getMemberCount(),
-                        c.getLatitude(),
-                        c.getLongitude(),
-                        c.getEventType(),
-                        c.getCreatedAt(),
-                        c.getUpdatedAt()
-                ))
+                .map(c -> {
+                    String eventTypeName = c.getEventType() != null ? c.getEventType().getName() : null;
+                    return new CapsuleGetMyCapsulesResponse(
+                            c.getId(),
+                            c.getName(),
+                            c.getCoverUrl(),
+                            c.getStartDate(),
+                            c.getEndDate(),
+                            c.getColor(),
+                            c.getIsPrivate(),
+                            c.getJoinToken(),
+                            new CapsuleOwnerResponse(
+                                    c.getUser().getId(),
+                                    c.getUser().getUsername(),
+                                    c.getUser().getEmail(),
+                                    c.getUser().getAvatarUrl()
+                            ),
+                            c.getIsArchived(),
+                            c.getMemberCount(),
+                            c.getLatitude(),
+                            c.getLongitude(),
+                            eventTypeName,
+                            c.getCreatedAt(),
+                            c.getUpdatedAt()
+                    );
+                })
                 .toList();
 
         if (data.isEmpty()) {

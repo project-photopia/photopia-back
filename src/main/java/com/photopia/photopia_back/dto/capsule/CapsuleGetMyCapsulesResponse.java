@@ -1,8 +1,5 @@
 package com.photopia.photopia_back.dto.capsule;
 
-import com.photopia.photopia_back.model.EventType;
-import com.photopia.photopia_back.model.User;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -21,7 +18,7 @@ public record CapsuleGetMyCapsulesResponse(
         Integer memberCount,
         Double latitude,
         Double longitude,
-        EventType eventType,
+        String eventTypeName,
         Instant createdAt,
         Instant updatedAt
-){}
+) {}

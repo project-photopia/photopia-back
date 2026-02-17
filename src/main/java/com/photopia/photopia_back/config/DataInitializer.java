@@ -15,9 +15,10 @@ public class DataInitializer {
     @Bean
     public CommandLineRunner initData(EventTypeRepository eventTypeRepository) {
         return args -> {
-            if (eventTypeRepository.count() == 0) {
-                List<String> defaultEventTypes = Arrays.asList(
-                        "Voyage",
+            List<String> defaultEventTypes = Arrays.asList(
+                    "Trip",
+                    "Event",
+                    "Voyage",
                         "Mariage",
                         "Soirée",
                         "Anniversaire",
@@ -26,11 +27,9 @@ public class DataInitializer {
                         "Sport",
                         "Autre");
 
-                for (String typeName : defaultEventTypes) {
-                    EventType eventType = EventType.builder()
-                            .name(typeName)
-                            .build();
-                    eventTypeRepository.save(eventType);
+            for (String typeName : defaultEventTypes) {
+                if (eventTypeRepository.findByName(typeName).isEmpty()) {
+                    eventTypeRepository.save(EventType.builder().name(typeName).build());
                 }
             }
         };
