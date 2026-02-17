@@ -3,223 +3,120 @@ package com.photopia.photopia_back.controller;
 import com.photopia.photopia_back.dto.capsule.CapsuleCreateRequest;
 import com.photopia.photopia_back.dto.capsule.CapsuleGetMyCapsulesResponse;
 import com.photopia.photopia_back.dto.capsule.CapsuleMemberResponse;
-import com.photopia.photopia_back.dto.capsule.CapsuleOwnerResponse;
 import com.photopia.photopia_back.model.ApiResponse;
 import com.photopia.photopia_back.model.ApiSuccessResponse;
+import com.photopia.photopia_back.model.ApiErrorResponse;
+import com.photopia.photopia_back.model.ApiError;
 import com.photopia.photopia_back.model.Capsule;
-import com.photopia.photopia_back.model.CapsuleMember;
 import com.photopia.photopia_back.model.User;
-import com.photopia.photopia_back.repository.CapsuleMemberRepository;
-import com.photopia.photopia_back.repository.CapsuleRepository;
-import com.photopia.photopia_back.repository.EventTypeRepository;
+import com.photopia.photopia_back.service.CapsuleService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/capsules")
 public class CapsuleController {
 
-    private final CapsuleRepository capsuleRepository;
-    private final CapsuleMemberRepository capsuleMemberRepository;
-    private final EventTypeRepository eventTypeRepository;
+        private final CapsuleService capsuleService;
 
-    public CapsuleController(
-            CapsuleRepository capsuleRepository,
-            CapsuleMemberRepository capsuleMemberRepository,
-            EventTypeRepository eventTypeRepository
-    ) {
-        this.capsuleRepository = capsuleRepository;
-        this.capsuleMemberRepository = capsuleMemberRepository;
-        this.eventTypeRepository = eventTypeRepository;
-    }
-
-    @PostMapping("/create")
-    public ResponseEntity<ApiResponse> create(
-            @RequestBody CapsuleCreateRequest request,
-            Authentication authentication
-            ) {
-
-        User owner = (User) authentication.getPrincipal();
-
-        Capsule capsule = new Capsule();
-        capsule.setName(request.name());
-
-        // Start Date
-        capsule.setStartDate(LocalDate.now());
-        // End Date
-        capsule.setEndDate(null);
-        // Join Token (Generated)
-        capsule.setJoinToken(UUID.randomUUID().toString());
-
-        capsule.setUser(owner);
-
-        // Default Values
-        capsule.setIsPrivate(request.isPrivate() != null ? request.isPrivate() : true);
-        capsule.setIsArchived(false); // Default logic
-        capsule.setMemberCount(1);
-
-        // Event type (Trip, Event)
-        if (request.eventTypeName() != null && !request.eventTypeName().isBlank()) {
-            eventTypeRepository.findByName(request.eventTypeName())
-                    .ifPresent(capsule::setEventType);
+        public CapsuleController(CapsuleService capsuleService) {
+                this.capsuleService = capsuleService;
         }
 
-        Capsule savedCapsule = capsuleRepository.save(capsule);
-
-        CapsuleMember capsuleMember = CapsuleMember.builder()
-                .capsuleId(savedCapsule.getId())
-                .userId(owner.getId())
-                .role(CapsuleMember.Role.ADMIN)
-                .build();
-
-        capsuleMemberRepository.save(capsuleMember);
-
-        return ResponseEntity.ok(ApiSuccessResponse.of(savedCapsule, "Album created"));
-    }
-
-    @Transactional(readOnly = true)
-    @GetMapping("")
-    public ResponseEntity<ApiResponse> getMyCapsules(Authentication authentication) {
-
-        User currentUser = (User) authentication.getPrincipal();
-        var capsules = capsuleRepository.findByUserOrMember(currentUser.getId());
-
-        var data = capsules.stream()
-                .map(c -> {
-                    String eventTypeName = c.getEventType() != null ? c.getEventType().getName() : null;
-                    return new CapsuleGetMyCapsulesResponse(
-                            c.getId(),
-                            c.getName(),
-                            c.getCoverUrl(),
-                            c.getStartDate(),
-                            c.getEndDate(),
-                            c.getColor(),
-                            c.getIsPrivate(),
-                            c.getJoinToken(),
-                            new CapsuleOwnerResponse(
-                                    c.getUser().getId(),
-                                    c.getUser().getUsername(),
-                                    c.getUser().getEmail(),
-                                    c.getUser().getAvatarUrl()
-                            ),
-                            c.getIsArchived(),
-                            c.getMemberCount(),
-                            c.getLatitude(),
-                            c.getLongitude(),
-                            eventTypeName,
-                            c.getCreatedAt(),
-                            c.getUpdatedAt()
-                    );
-                })
-                .toList();
-
-        if (data.isEmpty()) {
-            return ResponseEntity.ok(ApiSuccessResponse.of(data, "No capsules found"));
+        @PostMapping("/create")
+        public ResponseEntity<ApiResponse> create(
+                        @RequestBody CapsuleCreateRequest request,
+                        Authentication authentication) {
+                User owner = (User) authentication.getPrincipal();
+                try {
+                        Capsule savedCapsule = capsuleService.createCapsule(request, owner);
+                        return ResponseEntity.ok(ApiSuccessResponse.of(savedCapsule, "Album created"));
+                } catch (Exception e) {
+                        return ResponseEntity.badRequest().body(
+                                        ApiErrorResponse.of(ApiError.builder()
+                                                        .status(400)
+                                                        .message(e.getMessage())
+                                                        .code("CREATION_FAILED")
+                                                        .build()));
+                }
         }
 
-        return ResponseEntity.ok(ApiSuccessResponse.of(data, "Capsules fetched"));
-    }
+        @GetMapping("")
+        public ResponseEntity<ApiResponse> getMyCapsules(Authentication authentication) {
+                User currentUser = (User) authentication.getPrincipal();
+                List<CapsuleGetMyCapsulesResponse> data = capsuleService.getMyCapsules(currentUser);
 
-    // TODO: Passer l'invite-link et le join dans un controller CapsuleMemberController
-    @GetMapping("/{capsuleId}/invite-link")
-    public ResponseEntity<ApiResponse> getInviteLink(
-            @PathVariable UUID capsuleId,
-            Authentication authentication
-    ) {
-        User user = (User) authentication.getPrincipal();
+                if (data.isEmpty()) {
+                        return ResponseEntity.ok(ApiSuccessResponse.of(data, "No capsules found"));
+                }
 
-        Capsule capsule = capsuleRepository.findByIdAndUser_Id(capsuleId, user.getId())
-                .orElseThrow(() -> new RuntimeException("Capsule not found"));
-
-        if (capsule.getJoinToken() == null || capsule.getJoinToken().isBlank()) {
-            capsule.setJoinToken(UUID.randomUUID().toString());
-            capsuleRepository.save(capsule);
+                return ResponseEntity.ok(ApiSuccessResponse.of(data, "Capsules fetched"));
         }
 
-        String link = "https://photopia.app/join?token=" + capsule.getJoinToken();
-        return ResponseEntity.ok(ApiSuccessResponse.of(link, "Invite link generated"));
-    }
-
-    @PostMapping("/join/{token}")
-    public ResponseEntity<ApiResponse> joinCapsule(
-            @PathVariable String token,
-            Authentication authentication
-    ) {
-        User user = (User) authentication.getPrincipal();
-
-        Capsule capsule = capsuleRepository.findByJoinToken(token)
-                .orElseThrow(() -> new RuntimeException("Invalid invite token"));
-
-        UUID capsuleId = capsule.getId();
-        UUID userId = user.getId();
-
-        if (capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, userId)) {
-            return ResponseEntity.ok(ApiSuccessResponse.of(null, "Already a member"));
+        // TODO: Passer l'invite-link et le join dans un controller
+        // CapsuleMemberController
+        @GetMapping("/{capsuleId}/invite-link")
+        public ResponseEntity<ApiResponse> getInviteLink(
+                        @PathVariable UUID capsuleId,
+                        Authentication authentication) {
+                User user = (User) authentication.getPrincipal();
+                try {
+                        String link = capsuleService.generateInviteLink(capsuleId, user);
+                        return ResponseEntity.ok(ApiSuccessResponse.of(link, "Invite link generated"));
+                } catch (Exception e) {
+                        return ResponseEntity.badRequest().body(
+                                        ApiErrorResponse.of(ApiError.builder()
+                                                        .status(400)
+                                                        .message(e.getMessage())
+                                                        .code("LINK_GENERATION_FAILED")
+                                                        .build()));
+                }
         }
 
-        capsuleMemberRepository.save(
-                CapsuleMember.builder()
-                        .capsuleId(capsuleId)
-                        .userId(userId)
-                        .role(CapsuleMember.Role.MEMBER)
-                        .build()
-        );
-
-        capsule.setMemberCount(capsule.getMemberCount() + 1);
-        capsuleRepository.save(capsule);
-
-        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Joined capsule successfully"));
-
-    }
-
-    @Transactional
-    @DeleteMapping("/{capsuleId}")
-    public ResponseEntity<ApiResponse> deleteCapsule(
-            @PathVariable UUID capsuleId,
-            Authentication authentication
-    ) {
-        User me = (User) authentication.getPrincipal();
-
-        // Vérifie capsule + ownership en une requête (évite lazy issues)
-        Capsule capsule = capsuleRepository.findByIdAndUser_Id(capsuleId, me.getId())
-                .orElseThrow(() -> new RuntimeException("Capsule not found or forbidden"));
-
-        boolean isOwner = capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, me.getId());
-        boolean isAdmin = capsuleMemberRepository.existsByCapsuleIdAndUserIdAndRole(capsuleId, me.getId(), CapsuleMember.Role.ADMIN);
-
-        if (!isOwner && !isAdmin) {
-            throw new RuntimeException("Forbidden");
+        @PostMapping("/join/{token}")
+        public ResponseEntity<ApiResponse> joinCapsule(
+                        @PathVariable String token,
+                        Authentication authentication) {
+                User user = (User) authentication.getPrincipal();
+                try {
+                        capsuleService.joinCapsule(token, user);
+                        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Joined capsule successfully"));
+                } catch (Exception e) {
+                        return ResponseEntity.badRequest().body(
+                                        ApiErrorResponse.of(ApiError.builder()
+                                                        .status(400)
+                                                        .message(e.getMessage())
+                                                        .code("JOIN_FAILED")
+                                                        .build()));
+                }
         }
 
-        capsuleMemberRepository.deleteByCapsuleId(capsuleId);
+        @DeleteMapping("/{capsuleId}")
+        public ResponseEntity<ApiResponse> deleteCapsule(
+                        @PathVariable UUID capsuleId,
+                        Authentication authentication) {
+                User me = (User) authentication.getPrincipal();
+                try {
+                        capsuleService.deleteCapsule(capsuleId, me);
+                        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Capsule deleted"));
+                } catch (Exception e) {
+                        return ResponseEntity.badRequest().body(
+                                        ApiErrorResponse.of(ApiError.builder()
+                                                        .status(403)
+                                                        .message(e.getMessage())
+                                                        .code("DELETE_FAILED")
+                                                        .build()));
+                }
+        }
 
-        capsuleRepository.delete(capsule);
-
-        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Capsule deleted"));
-    }
-
-    @GetMapping("/{capsuleId}/members")
-    public ResponseEntity<ApiResponse> getCapsuleMembers(
-            @PathVariable UUID capsuleId
-    ) {
-
-        var members = capsuleMemberRepository.findByCapsuleId(capsuleId);
-
-        var data = members.stream()
-                .map(m -> new CapsuleMemberResponse(
-                        m.getUserId(),
-                        m.getUser().getUsername(),
-                        m.getUser().getEmail(),
-                        m.getUser().getAvatarUrl(),
-                        m.getRole()
-                ))
-                .toList();
-
-        return ResponseEntity.ok(ApiSuccessResponse.of(data, "Members fetched"));
-    }
+        @GetMapping("/{capsuleId}/members")
+        public ResponseEntity<ApiResponse> getCapsuleMembers(
+                        @PathVariable UUID capsuleId) {
+                List<CapsuleMemberResponse> data = capsuleService.getCapsuleMembers(capsuleId);
+                return ResponseEntity.ok(ApiSuccessResponse.of(data, "Members fetched"));
+        }
 }
