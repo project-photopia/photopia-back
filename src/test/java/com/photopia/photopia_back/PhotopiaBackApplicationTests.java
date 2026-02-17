@@ -5,7 +5,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mail.javamail.JavaMailSender;
 
-@SpringBootTest(properties = "spring.mail.username=test@photopia.com")
+@SpringBootTest
 class PhotopiaBackApplicationTests {
 
 	@MockBean

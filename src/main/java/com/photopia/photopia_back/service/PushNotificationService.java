@@ -35,37 +35,34 @@ public class PushNotificationService {
   public void notifyCapsuleMembersNewMedia(
       UUID capsuleId, UUID excludeUserId, String uploaderName, String capsuleName) {
     if (!isFirebaseInitialized()) {
-      log.info("[Push] Firebase not initialized, skipping");
-      return;
-    }
-
-    List<UUID> memberUserIds = capsuleMemberRepository.findByCapsuleId(capsuleId).stream()
-        .map((m) -> m.getUserId())
-        .filter((id) -> !id.equals(excludeUserId))
-        .toList();
-
-    if (memberUserIds.isEmpty()) {
-      return;
-    }
-
-    List<String> tokens = memberUserIds.stream()
-        .flatMap(
-            (userId) -> deviceTokenRepository.findByUserIdAndNotificationsEnabledTrue(userId).stream())
-        .map(DeviceToken::getToken)
-        .toList();
-
-    if (tokens.isEmpty()) {
-      log.info("[Push] No device tokens found for capsule members (users need to enable notifications)");
+      log.info("[Push] Firebase not initialized, skipping push notifications");
     } else {
-      log.info("[Push] Sending to {} device(s) for capsule {}", tokens.size(), capsuleId);
+      List<UUID> memberUserIds = capsuleMemberRepository.findByCapsuleId(capsuleId).stream()
+          .map((m) -> m.getUserId())
+          .filter((id) -> !id.equals(excludeUserId))
+          .toList();
 
-      String title = "New media 📸";
-      String body = uploaderName != null && !uploaderName.isBlank()
-          ? String.format("%s added a photo in %s", uploaderName, capsuleName)
-          : String.format("New photo in %s", capsuleName);
+      if (!memberUserIds.isEmpty()) {
+        List<String> tokens = memberUserIds.stream()
+            .flatMap(
+                (userId) -> deviceTokenRepository.findByUserIdAndNotificationsEnabledTrue(userId).stream())
+            .map(DeviceToken::getToken)
+            .toList();
 
-      for (String token : tokens) {
-        sendToToken(token, title, body, capsuleId.toString());
+        if (tokens.isEmpty()) {
+          log.info("[Push] No device tokens found for capsule members (users need to enable notifications)");
+        } else {
+          log.info("[Push] Sending to {} device(s) for capsule {}", tokens.size(), capsuleId);
+
+          String title = "New media 📸";
+          String body = uploaderName != null && !uploaderName.isBlank()
+              ? String.format("%s added a photo in %s", uploaderName, capsuleName)
+              : String.format("New photo in %s", capsuleName);
+
+          for (String token : tokens) {
+            sendToToken(token, title, body, capsuleId.toString());
+          }
+        }
       }
     }
 
