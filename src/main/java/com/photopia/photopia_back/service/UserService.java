@@ -7,6 +7,7 @@ import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.UserRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -20,10 +21,10 @@ public class UserService {
 
     private final UserRepository repo;
     private final JwtUtil jwtUtil;
-    private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
     public UserService(UserRepository repo, JwtUtil jwtUtil,
-            org.springframework.security.crypto.password.PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder) {
         this.repo = repo;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
