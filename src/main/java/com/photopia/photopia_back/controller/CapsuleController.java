@@ -83,8 +83,8 @@ public class CapsuleController {
                         Authentication authentication) {
                 User user = (User) authentication.getPrincipal();
                 try {
-                        capsuleService.joinCapsule(token, user);
-                        return ResponseEntity.ok(ApiSuccessResponse.of(null, "Joined capsule successfully"));
+                        UUID capsuleId = capsuleService.joinCapsule(token, user);
+                        return ResponseEntity.ok(ApiSuccessResponse.of(capsuleId.toString(), "Joined capsule successfully"));
                 } catch (Exception e) {
                         return ResponseEntity.badRequest().body(
                                         ApiErrorResponse.of(ApiError.builder()

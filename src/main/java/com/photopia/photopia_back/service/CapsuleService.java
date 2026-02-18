@@ -65,7 +65,7 @@ public class CapsuleService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "my_capsules_v2", key = "#currentUser.id")
+   @Cacheable(value = "my_capsules_v2", key = "#currentUser.id")
     public List<CapsuleGetMyCapsulesResponse> getMyCapsules(User currentUser) {
         var capsules = capsuleRepository.findByUserOrMember(currentUser.getId());
 
@@ -111,7 +111,7 @@ public class CapsuleService {
 
     @Transactional
     @CacheEvict(value = "my_capsules_v2", key = "#user.id")
-    public void joinCapsule(String token, User user) {
+    public UUID joinCapsule(String token, User user) {
         Capsule capsule = capsuleRepository.findByJoinToken(token)
                 .orElseThrow(() -> new RuntimeException("Invalid invite token"));
 
@@ -119,7 +119,7 @@ public class CapsuleService {
         UUID userId = user.getId();
 
         if (capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, userId)) {
-            return; // Already a member, idempotent
+            return capsuleId; // Already a member, idempotent
         }
 
         capsuleMemberRepository.save(
@@ -139,6 +139,7 @@ public class CapsuleService {
         // However, since we don't have reference to "my_capsules" key easily here
         // without the ID...
         // Actually, we can evict based on userId.
+        return capsuleId;
     }
 
     @Transactional
