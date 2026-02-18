@@ -25,14 +25,17 @@ public class CapsuleService {
     private final CapsuleRepository capsuleRepository;
     private final CapsuleMemberRepository capsuleMemberRepository;
     private final EventTypeRepository eventTypeRepository;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
     public CapsuleService(
             CapsuleRepository capsuleRepository,
             CapsuleMemberRepository capsuleMemberRepository,
-            EventTypeRepository eventTypeRepository) {
+            EventTypeRepository eventTypeRepository,
+            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.capsuleRepository = capsuleRepository;
         this.capsuleMemberRepository = capsuleMemberRepository;
         this.eventTypeRepository = eventTypeRepository;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional
@@ -61,6 +64,9 @@ public class CapsuleService {
                 .build();
 
         capsuleMemberRepository.save(capsuleMember);
+
+        meterRegistry.counter("photopia.capsules.created").increment();
+
         return savedCapsule;
     }
 
@@ -131,6 +137,8 @@ public class CapsuleService {
 
         capsule.setMemberCount(capsule.getMemberCount() + 1);
         capsuleRepository.save(capsule);
+
+        meterRegistry.counter("photopia.capsules.joined").increment();
 
         // Evict cache for the user joining
         // Note: we can't easily evict cache for OTHER members if we cached the capsule

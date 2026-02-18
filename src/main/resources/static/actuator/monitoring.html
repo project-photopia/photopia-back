@@ -156,6 +156,28 @@
             </div>
             <canvas id="cpuChart"></canvas>
         </div>
+
+        <!-- Business Metrics -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Media Uploaded</span>
+            </div>
+            <div class="metric-value" id="media-count">0</div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Capsules Created</span>
+            </div>
+            <div class="metric-value" id="capsules-created">0</div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Members Joined</span>
+            </div>
+            <div class="metric-value" id="members-joined">0</div>
+        </div>
     </div>
 
     <script>
@@ -246,6 +268,19 @@
             }
         };
 
+        const fetchMetricValue = async (metricName, elementId) => {
+            try {
+                const res = await fetch(`/actuator/metrics/${metricName}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const val = data.measurements.find(m => m.statistic === 'COUNT')?.value || 0;
+                    document.getElementById(elementId).textContent = val;
+                }
+            } catch (e) {
+                console.error(`Error fetching ${metricName}`, e);
+            }
+        };
+
         const fetchMetrics = async () => {
              // Memory
             try {
@@ -275,6 +310,11 @@
                     updateChart(cpuChart, percent);
                  }
             } catch (e) { console.error('CPU metric error', e); }
+
+            // Business Metrics
+            fetchMetricValue('photopia.media.uploaded', 'media-count');
+            fetchMetricValue('photopia.capsules.created', 'capsules-created');
+            fetchMetricValue('photopia.capsules.joined', 'members-joined');
         };
 
         // --- Init ---

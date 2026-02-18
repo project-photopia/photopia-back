@@ -40,7 +40,8 @@ public class SecurityConfig {
                                                 .permitAll() // login/register accessibles sans token
                                                 .anyRequest().authenticated())
                                 .exceptionHandling(ex -> ex
-                                                .authenticationEntryPoint(new HttpStatusEntryPoint(org.springframework.http.HttpStatus.UNAUTHORIZED)))
+                                                .authenticationEntryPoint(new HttpStatusEntryPoint(
+                                                                org.springframework.http.HttpStatus.UNAUTHORIZED)))
                                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();

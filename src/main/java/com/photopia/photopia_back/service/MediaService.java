@@ -20,16 +20,19 @@ public class MediaService {
     private final MediaRepository mediaRepository;
     private final CapsuleRepository capsuleRepository;
     private final PushNotificationService pushNotificationService;
+    private final io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
     public MediaService(
             R2Service r2Service,
             MediaRepository mediaRepository,
             CapsuleRepository capsuleRepository,
-            PushNotificationService pushNotificationService) {
+            PushNotificationService pushNotificationService,
+            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.r2Service = r2Service;
         this.mediaRepository = mediaRepository;
         this.capsuleRepository = capsuleRepository;
         this.pushNotificationService = pushNotificationService;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional
@@ -46,11 +49,13 @@ public class MediaService {
         Capsule capsule = capsuleRepository.findById(request.capsuleId())
                 .orElseThrow(() -> new RuntimeException("Capsule not found"));
 
+        Media.MediaType type = determineMediaType(request.mediaType());
+
         Media media = Media.builder()
                 .originalUrl(request.originalKey())
                 .previewUrl(request.previewKey())
                 .thumbnailUrl(request.previewKey()) // Backward compatibility
-                .mediaType(determineMediaType(request.mediaType()))
+                .mediaType(type)
                 .user(user)
                 .capsule(capsule)
                 .width(request.width())
@@ -67,6 +72,8 @@ public class MediaService {
                 user.getId(),
                 user.getUsername(),
                 capsule.getName());
+
+        meterRegistry.counter("photopia.media.uploaded", "type", type.name()).increment();
 
         return savedMedia;
     }
