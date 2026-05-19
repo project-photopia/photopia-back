@@ -3,12 +3,12 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-    <property file=".env" />
-    <property name="LOKI_URL" value="${GRAFANA_LOKI_URL:-https://logs-prod-012.grafana.net/loki/api/v1/push}"/>
-    <property name="LOKI_USER" value="${GRAFANA_LOKI_USER:-}"/>
-    <property name="LOKI_PASSWORD" value="${GRAFANA_LOKI_PASSWORD:-}"/>
+    <springProperty scope="context" name="LOKI_URL" source="grafana.loki.url" defaultValue="https://logs-prod-012.grafana.net/loki/api/v1/push"/>
+    <springProperty scope="context" name="LOKI_USER" source="grafana.loki.user" defaultValue=""/>
+    <springProperty scope="context" name="LOKI_PASSWORD" source="grafana.loki.password" defaultValue=""/>
 
-    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+    <springProfile name="grafana">
+        <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
         <http>
             <url>${LOKI_URL}</url>
             <auth>
@@ -25,11 +25,14 @@
             </message>
             <sortByTime>true</sortByTime>
         </format>
-    </appender>
+        </appender>
+    </springProfile>
 
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
-        <appender-ref ref="LOKI" />
+        <springProfile name="grafana">
+            <appender-ref ref="LOKI" />
+        </springProfile>
     </root>
 
 </configuration>
