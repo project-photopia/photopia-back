@@ -3,7 +3,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
 
-    <springProperty scope="context" name="LOKI_URL" source="grafana.loki.url" defaultValue="https://logs-prod-012.grafana.net/loki/api/v1/push"/>
+    <springProperty scope="context" name="LOKI_URL" source="grafana.loki.url" defaultValue="http://localhost:3100/loki/api/v1/push"/>
     <springProperty scope="context" name="LOKI_USER" source="grafana.loki.user" defaultValue=""/>
     <springProperty scope="context" name="LOKI_PASSWORD" source="grafana.loki.password" defaultValue=""/>
 
