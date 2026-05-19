@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <property file=".env" />
+    <property name="LOKI_URL" value="${GRAFANA_LOKI_URL:-https://logs-prod-012.grafana.net/loki/api/v1/push}"/>
+    <property name="LOKI_USER" value="${GRAFANA_LOKI_USER:-}"/>
+    <property name="LOKI_PASSWORD" value="${GRAFANA_LOKI_PASSWORD:-}"/>
+
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>${LOKI_URL}</url>
+            <auth>
+                <username>${LOKI_USER}</username>
+                <password>${LOKI_PASSWORD}</password>
+            </auth>
+        </http>
+        <format>
+            <label>
+                <pattern>app=photopia-back,host=${HOSTNAME},level=%level</pattern>
+            </label>
+            <message>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            </message>
+            <sortByTime>true</sortByTime>
+        </format>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="LOKI" />
+    </root>
+
+</configuration>
