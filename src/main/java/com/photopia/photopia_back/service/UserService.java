@@ -2,6 +2,7 @@ package com.photopia.photopia_back.service;
 
 import com.photopia.photopia_back.dto.LoginRequest;
 import com.photopia.photopia_back.dto.RegisterRequest;
+import com.photopia.photopia_back.dto.UpdateUserRequest;
 import com.photopia.photopia_back.jwt.JwtUtil;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.UserRepository;
@@ -81,6 +82,23 @@ public class UserService {
 
         return data;
     }
+    
+    public User updateProfile(UUID userId, UpdateUserRequest request) {
+    User user = getUserById(userId);
+
+    if (request.username() != null && !request.username().isBlank()) {
+        repo.findByUsername(request.username())
+            .filter(u -> !u.getId().equals(userId))
+            .ifPresent(u -> { throw new RuntimeException("Username already taken"); });
+        user.setUsername(request.username().trim());
+    }
+
+    if (request.avatarUrl() != null) {
+        user.setAvatarUrl(request.avatarUrl());
+    }
+
+    return updateUser(user); // réutilise @CacheEvict existant
+}
 
     @CacheEvict(value = "users_v2", key = "#user.id")
     public User updateUser(User user) {

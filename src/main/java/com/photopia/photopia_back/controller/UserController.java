@@ -2,6 +2,7 @@ package com.photopia.photopia_back.controller;
 
 import com.photopia.photopia_back.dto.LoginRequest;
 import com.photopia.photopia_back.dto.RegisterRequest;
+import com.photopia.photopia_back.dto.UpdateUserRequest;
 import com.photopia.photopia_back.model.ApiError;
 import com.photopia.photopia_back.model.ApiErrorResponse;
 import com.photopia.photopia_back.model.ApiResponse;
@@ -75,6 +76,23 @@ public class UserController {
                                                         .message(e.getMessage())
                                                         .code("LOGIN_FAILED")
                                                         .build()));
+                }
+        }
+
+        @PatchMapping("/me")
+        public ResponseEntity<ApiResponse> updateMe(@RequestBody UpdateUserRequest request) {
+                User currentUser = (User) SecurityContextHolder.getContext()
+                        .getAuthentication().getPrincipal();
+                try {
+                        User updated = userService.updateProfile(currentUser.getId(), request);
+                        return ResponseEntity.ok(ApiSuccessResponse.of(updated, "Profile updated"));
+                } catch (RuntimeException e) {
+                        return ResponseEntity.badRequest().body(
+                                ApiErrorResponse.of(ApiError.builder()
+                                        .status(400)
+                                        .message(e.getMessage())
+                                        .code("PROFILE_UPDATE_FAILED")
+                                        .build()));
                 }
         }
 
