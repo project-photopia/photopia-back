@@ -19,6 +19,7 @@ public record CapsuleGetMyCapsulesResponse(
         Double latitude,
         Double longitude,
         String eventTypeName,
+        Integer mediaCount,
         Instant createdAt,
         Instant updatedAt
 ) {}

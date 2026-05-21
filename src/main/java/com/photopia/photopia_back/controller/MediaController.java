@@ -104,8 +104,9 @@ public class MediaController {
     @GetMapping("/capsule/{capsuleId}")
     public ResponseEntity<ApiResponse> getCapsuleMedias(
             @PathVariable UUID capsuleId) {
+        User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 
-        List<Media> medias = mediaService.getMediasByCapsuleId(capsuleId);
+        List<Media> medias = mediaService.getMediasByCapsuleId(capsuleId, currentUser.getId());
 
         List<MediaResponse> responses = medias.stream()
                 .map(this::mapToResponse)
@@ -115,10 +116,11 @@ public class MediaController {
     }
 
     private MediaResponse mapToResponse(Media media) {
-        // Transform stored keys into Presigned GET URLs
         String originalUrl = mediaService.getPresignedGetUrl(media.getOriginalUrl());
         String previewUrl = mediaService.getPresignedGetUrl(media.getPreviewUrl());
         String thumbnailUrl = mediaService.getPresignedGetUrl(media.getThumbnailUrl());
+
+        User author = media.getUser();
 
         return new MediaResponse(
                 media.getId(),
@@ -137,6 +139,8 @@ public class MediaController {
                 media.getReactionCount(),
                 media.getCommentCount(),
                 media.getCapsule() != null ? media.getCapsule().getId() : null,
-                media.getUser() != null ? media.getUser().getId() : null);
+                author != null ? author.getId() : null,
+                author != null ? author.getUsername() : null,
+                author != null ? author.getAvatarUrl() : null);
     }
 }

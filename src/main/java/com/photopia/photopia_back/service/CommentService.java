@@ -1,6 +1,8 @@
 package com.photopia.photopia_back.service;
 
 import com.photopia.photopia_back.dto.CommentResponse;
+import com.photopia.photopia_back.exception.AccessDeniedException;
+import com.photopia.photopia_back.exception.ResourceNotFoundException;
 import com.photopia.photopia_back.model.Comment;
 import com.photopia.photopia_back.model.Media;
 import com.photopia.photopia_back.model.User;
@@ -55,13 +57,13 @@ public class CommentService {
     @Transactional
     public void deleteComment(UUID commentId, User user) {
         Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
 
         boolean isCommentOwner = comment.getUser().getId().equals(user.getId());
         boolean isMediaOwner = comment.getMedia().getUser().getId().equals(user.getId());
 
         if (!isCommentOwner && !isMediaOwner) {
-            throw new RuntimeException("You are not authorized to delete this comment");
+            throw new AccessDeniedException("You are not authorized to delete this comment");
         }
 
         Media media = comment.getMedia();

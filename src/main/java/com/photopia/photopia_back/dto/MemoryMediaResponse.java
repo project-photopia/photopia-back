@@ -1,9 +1,9 @@
 package com.photopia.photopia_back.dto;
 
-import java.util.UUID;
 import java.time.Instant;
+import java.util.UUID;
 
-public record MediaResponse(
+public record MemoryMediaResponse(
         UUID id,
         String originalUrl,
         String previewUrl,
@@ -11,16 +11,10 @@ public record MediaResponse(
         String mediaType,
         Integer width,
         Integer height,
-        Integer durationSec,
         Double latitude,
         Double longitude,
         String locationName,
         Instant takenAt,
-        Instant uploadedAt,
-        Integer reactionCount,
-        Integer commentCount,
-        UUID capsuleId,
-        UUID userId,
-        String authorUsername,
-        String authorAvatarUrl) {
+        String uploaderName,
+        String uploaderAvatarUrl) {
 }
