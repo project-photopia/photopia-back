@@ -2,11 +2,14 @@ package com.photopia.photopia_back.service;
 
 import com.photopia.photopia_back.dto.LoginRequest;
 import com.photopia.photopia_back.dto.RegisterRequest;
+import com.photopia.photopia_back.exception.BadRequestException;
+import com.photopia.photopia_back.exception.ResourceNotFoundException;
 import com.photopia.photopia_back.jwt.JwtUtil;
 import com.photopia.photopia_back.model.User;
 import com.photopia.photopia_back.repository.UserRepository;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -36,13 +39,12 @@ public class UserService {
 
     @Cacheable(value = "users_v2", key = "#id")
     public User getUserById(UUID id) {
-        return repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        return repo.findById(id).orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     public Map<String, Object> register(RegisterRequest request) {
         if (repo.findByEmail(request.email()).isPresent()) {
-            throw new RuntimeException("Email already exists"); // Controller should handle exception mapping or return
-                                                                // a Result type
+            throw new BadRequestException("Email already exists");
         }
 
         User user = new User();
@@ -65,13 +67,13 @@ public class UserService {
 
         Optional<User> optUser = repo.findByEmail(email);
         if (optUser.isEmpty()) {
-            throw new RuntimeException("User not found");
+            throw new BadCredentialsException("Invalid email or password");
         }
 
         User user = optUser.get();
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("Incorrect password");
+            throw new BadCredentialsException("Invalid email or password");
         }
 
         String token = jwtUtil.generateToken(user);

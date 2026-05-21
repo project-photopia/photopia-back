@@ -4,6 +4,7 @@ import com.photopia.photopia_back.dto.MediaRegisterRequest;
 import com.photopia.photopia_back.model.Capsule;
 import com.photopia.photopia_back.model.Media;
 import com.photopia.photopia_back.model.User;
+import com.photopia.photopia_back.repository.CapsuleMemberRepository;
 import com.photopia.photopia_back.repository.CapsuleRepository;
 import com.photopia.photopia_back.repository.MediaRepository;
 import com.photopia.photopia_back.service.PushNotificationService;
@@ -33,6 +34,9 @@ class MediaServiceTest {
 
         @Mock
         private R2Service r2Service;
+
+        @Mock
+        private CapsuleMemberRepository capsuleMemberRepository;
 
         @Mock
         private PushNotificationService pushNotificationService;
@@ -72,6 +76,8 @@ class MediaServiceTest {
                                 request.previewSignature()))
                                 .thenReturn(true);
                 when(capsuleRepository.findById(capsuleId)).thenReturn(Optional.of(capsule));
+                when(capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, user.getId()))
+                                .thenReturn(true);
                 when(mediaRepository.save(any(Media.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
                 io.micrometer.core.instrument.Counter mockCounter = mock(io.micrometer.core.instrument.Counter.class);
@@ -243,11 +249,14 @@ class MediaServiceTest {
         void getMediasByCapsuleId_ShouldReturnList() {
                 // Arrange
                 UUID capsuleId = UUID.randomUUID();
+                UUID userId = UUID.randomUUID();
+                when(capsuleMemberRepository.existsByCapsuleIdAndUserId(capsuleId, userId))
+                                .thenReturn(true);
                 when(mediaRepository.findByCapsuleIdOrderByTakenAtDesc(capsuleId))
                                 .thenReturn(java.util.Collections.emptyList());
 
                 // Act
-                var result = mediaService.getMediasByCapsuleId(capsuleId);
+                var result = mediaService.getMediasByCapsuleId(capsuleId, userId);
 
                 // Assert
                 assertNotNull(result);
