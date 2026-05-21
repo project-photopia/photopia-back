@@ -1,33 +1,45 @@
 package com.photopia.photopia_back.service;
 
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailService {
 
-    private final JavaMailSender javaMailSender;
-
-    @Value("${app.mail.from}")
-    private String senderEmail;
+    private final RestClient restClient;
+    private final String senderEmail;
 
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+
+    public EmailService(@Value("${resend.api-key:}") String apiKey,
+                        @Value("${resend.url:https://api.resend.com}") String resendUrl,
+                        @Value("${app.mail.from}") String senderEmail,
+                        RestClient.Builder restClientBuilder) {
+        this.senderEmail = senderEmail;
+        
+        String authHeader = apiKey != null && !apiKey.isEmpty()
+                ? "Bearer " + apiKey
+                : "";
+
+        this.restClient = restClientBuilder
+                .baseUrl(resendUrl)
+                .defaultHeader("Authorization", authHeader)
+                .build();
+    }
 
     public void sendNewMediaNotification(List<String> recipients, String capsuleName, String uploaderName) {
         if (recipients.isEmpty()) {
             return;
         }
 
-        String subject = "New media in " + capsuleName + " 📸";
+        String subject = "New media in " + capsuleName + " \uD83D\uDCF8";
         String content = buildHtmlContent(capsuleName, uploaderName);
 
         for (String recipient : recipients) {
@@ -43,16 +55,21 @@ public class EmailService {
         }
     }
 
-    private void sendHtmlEmail(String to, String subject, String htmlBody) throws MessagingException {
-        MimeMessage message = javaMailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+    private void sendHtmlEmail(String to, String subject, String htmlBody) {
+        Map<String, Object> requestBody = Map.of(
+            "from", senderEmail,
+            "to", List.of(to),
+            "subject", subject,
+            "html", htmlBody
+        );
 
-        helper.setFrom(senderEmail);
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(htmlBody, true);
+        restClient.post()
+                .uri("/emails")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .retrieve()
+                .toBodilessEntity();
 
-        javaMailSender.send(message);
         log.info("Sent email to {}", to);
     }
 

@@ -34,7 +34,7 @@ public class SecurityConfig {
                                                                 "/api/users/login",
                                                                 "/api/users/register",
                                                                 "/swagger-ui/**",
-                                                                "/api/users/register",
+                                                                "/api/mail-test/**",
                                                                 "/v3/api-docs/**",
                                                                 "/actuator/**")
                                                 .permitAll() // login/register accessibles sans token

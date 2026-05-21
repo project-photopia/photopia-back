@@ -30,9 +30,12 @@
 
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
-        <springProfile name="grafana">
-            <appender-ref ref="LOKI" />
-        </springProfile>
     </root>
+
+    <springProfile name="grafana">
+        <root level="INFO">
+            <appender-ref ref="LOKI" />
+        </root>
+    </springProfile>
 
 </configuration>
