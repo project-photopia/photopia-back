@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### VAR ENV ###
+.env
+
+### Firebase ###
+firebase/*.json
+**/firebase-adminsdk*.json
